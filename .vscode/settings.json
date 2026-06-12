@@ -1,0 +1,28 @@
+{
+  "search.exclude": {
+    "**/node_modules": true,
+    "**/.next": true,
+    "**/dist": true,
+    "**/out": true,
+    "**/build": true
+  },
+  "files.exclude": {
+    "**/node_modules": true,
+    "**/.next": true,
+    "**/dist": true,
+    "**/out": true,
+    "**/build": true
+  },
+  "eslint.workingDirectories": [
+    "./frontend"
+  ],
+  "typescript.validate.enable": true,
+  "javascript.validate.enable": false,
+  "eslint.enable": true,
+  "eslint.probe": [
+    "javascript",
+    "javascriptreact",
+    "typescript",
+    "typescriptreact"
+  ]
+}

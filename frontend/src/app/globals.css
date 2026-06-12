@@ -1,0 +1,36 @@
+@import "tailwindcss";
+
+@theme {
+  --color-primary: #00C896;
+  --color-secondary: #0052FF;
+  --color-accent: #FFB800;
+  --color-dark: #0A0F1E;
+  --color-surface: #111827;
+  --color-text: #F0F4FF;
+  --color-muted: #8892A4;
+  --color-danger: #FF4D6A;
+  
+  --font-sans: "Sora", sans-serif;
+  --font-mono: "Space Mono", monospace;
+}
+
+:root {
+  background-color: var(--color-dark);
+  color: var(--color-text);
+  font-family: var(--font-sans);
+
+  /* Sparkles component variables */
+  --gradient-color: #8350e8;
+  --sparkles-color: #8350e8;
+}
+
+.dark {
+  --gradient-color: #8350e8;
+  --sparkles-color: #ffffff;
+}
+
+body {
+  margin: 0;
+  background-color: var(--color-dark);
+  color: var(--color-text);
+}

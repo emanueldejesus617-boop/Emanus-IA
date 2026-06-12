@@ -1,0 +1,12 @@
+{
+  "name": "emait-root",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "frontend",
+    "backend"
+  ],
+  "scripts": {
+    "dev": "node dev.js"
+  }
+}
