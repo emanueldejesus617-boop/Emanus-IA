@@ -1,16 +1,71 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import { Rocket, Flame, Sparkles } from "lucide-react";
+import { parseJsonResponse } from "@/lib/utils";
+
+interface User {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+  classe?: string;
+  curso?: string;
+  subjects?: string;
+  xp: number;
+  streak: number;
+  createdAt: string;
+  lastLoginAt?: string;
+}
+
+interface Profile {
+  classe?: string;
+  curso?: string;
+  subjects: string[];
+}
+
+interface ExamHistory {
+  id: string;
+  userId: string;
+  subject: string;
+  score: number;
+  totalQuestions: number;
+  createdAt: string;
+}
 
 export default function DashboardPage() {
-  const [user, setUser] = useState<any>(null);
-  const [profile, setProfile] = useState<any>(null);
-  const [history, setHistory] = useState<any[]>([]);
+  const [user, setUser] = useState<User | null>(() => {
+    if (typeof window !== "undefined") {
+      const stored = localStorage.getItem("user");
+      return stored ? JSON.parse(stored) : null;
+    }
+    return null;
+  });
+  const [profile, setProfile] = useState<Profile | null>(() => {
+    if (typeof window !== "undefined") {
+      const stored = localStorage.getItem("userProfile");
+      return stored ? JSON.parse(stored) : null;
+    }
+    return null;
+  });
+  const [history, setHistory] = useState<ExamHistory[]>([]);
   const [completedTopicsCount, setCompletedTopicsCount] = useState(0);
   const router = useRouter();
 
-  const loadUserData = async () => {
+  const getDaysUntilExams = () => {
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    let examDate = new Date(currentYear, 10, 20); // 20 Nov
+    if (now.getTime() > examDate.getTime()) {
+      examDate = new Date(currentYear + 1, 10, 20);
+    }
+    const diffTime = examDate.getTime() - now.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return diffDays;
+  };
+
+  const loadUserData = useCallback(async () => {
     const token = localStorage.getItem("token");
     if (!token) {
       router.push("/");
@@ -23,8 +78,20 @@ export default function DashboardPage() {
           "Authorization": `Bearer ${token}`
         }
       });
-      const data = await res.json();
-      if (res.ok && data.user) {
+
+      if (!res.ok) {
+        if (res.status === 401) {
+          localStorage.removeItem("token");
+          localStorage.removeItem("user");
+          localStorage.removeItem("userProfile");
+          router.push("/");
+          return;
+        }
+        throw new Error(`HTTP error! status: ${res.status}`);
+      }
+
+      const data = await parseJsonResponse(res);
+      if (data.user) {
         setUser(data.user);
         localStorage.setItem("user", JSON.stringify(data.user));
 
@@ -44,9 +111,9 @@ export default function DashboardPage() {
       const storedProfile = localStorage.getItem("userProfile");
       if (storedProfile) setProfile(JSON.parse(storedProfile));
     }
-  };
+  }, [router]);
 
-  const loadDashboardData = async () => {
+  const loadDashboardData = useCallback(async () => {
     const token = localStorage.getItem("token");
     if (!token) return;
     
@@ -56,7 +123,7 @@ export default function DashboardPage() {
         headers: { "Authorization": `Bearer ${token}` }
       });
       if (res.ok) {
-        const data = await res.json();
+        const data = await parseJsonResponse(res);
         setHistory(data);
       }
     } catch (e) {
@@ -69,19 +136,18 @@ export default function DashboardPage() {
         headers: { "Authorization": `Bearer ${token}` }
       });
       if (res.ok) {
-        const data = await res.json();
+        const data = await parseJsonResponse(res);
         setCompletedTopicsCount(data.length || 0);
       }
     } catch (e) {
       console.error("Error loading completed topics:", e);
     }
-  };
+  }, []);
 
   useEffect(() => {
     loadUserData();
     loadDashboardData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [loadUserData, loadDashboardData]);
 
   if (!user) return null;
 
@@ -106,73 +172,77 @@ export default function DashboardPage() {
   };
 
   return (
-    <div className="p-8 pb-20">
-      <header className="mb-8 flex items-center justify-between">
+    <div className="p-4 sm:p-8 pb-20">
+      <header className="mb-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-surface/40 sm:border-0 pb-4 sm:pb-0">
         <div>
-          <h1 className="text-3xl font-bold text-text">Olá, {user.name}! 👋</h1>
-          <p className="mt-2 text-muted">Aqui está o teu progresso na {profile?.classe || '12.ª Classe'} {profile?.curso ? `(${profile.curso})` : ''}.</p>
+          <h1 className="text-2xl sm:text-3xl font-bold text-text flex items-center gap-2">
+            Olá, {user.name}! <Sparkles className="w-5 h-5 sm:w-6 sm:h-6 text-primary inline-block shrink-0" />
+          </h1>
+          <p className="mt-1 sm:mt-2 text-xs sm:text-sm text-muted">Aqui está o teu progresso na {profile?.classe || '12.ª Classe'} {profile?.curso ? `(${profile.curso})` : ''}.</p>
         </div>
-        <div className="text-right">
-          <p className="text-sm font-medium text-muted">Faltam para os Exames:</p>
-          <p className="text-2xl font-bold text-primary">45 Dias</p>
+        <div className="text-left sm:text-right bg-surface/30 sm:bg-transparent p-3 sm:p-0 rounded-xl w-full sm:w-auto">
+          <p className="text-xs sm:text-sm font-medium text-muted">Faltam para os Exames:</p>
+          <p className="text-xl sm:text-2xl font-bold text-primary">{getDaysUntilExams()} Dias</p>
         </div>
       </header>
 
       {xp === 0 && history.length === 0 && (
-        <div className="mb-8 flex items-center gap-4 rounded-xl border border-primary/20 bg-primary/5 p-6 shadow-sm animate-fade-in">
-          <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-primary text-2xl text-dark">
-            🚀
+        <div className="mb-8 flex flex-col sm:flex-row items-start sm:items-center gap-4 rounded-xl border border-primary/20 bg-primary/5 p-4 sm:p-6 shadow-sm animate-fade-in">
+          <div className="flex h-10 w-10 sm:h-12 sm:w-12 flex-shrink-0 items-center justify-center rounded-full bg-primary text-dark">
+            <Rocket className="w-5 h-5 sm:w-6 sm:h-6" />
           </div>
           <div>
-            <h2 className="text-lg font-bold text-primary">Bem-vindo ao teu novo painel de controlo!</h2>
-            <p className="mt-1 text-sm text-muted">Como és um novo utilizador, todas as tuas métricas começam a zero. Começa a tua primeira aula ou resolve exercícios para veres os teus gráficos e estatísticas a crescer dinamicamente com base nas tuas ações.</p>
+            <h2 className="text-base sm:text-lg font-bold text-primary">Bem-vindo ao teu novo painel de controlo!</h2>
+            <p className="mt-1 text-xs sm:text-sm text-muted">Como és um novo utilizador, todas as tuas métricas começam a zero. Começa a tua primeira aula ou resolve exercícios para veres os teus gráficos e estatísticas a crescer dinamicamente com base nas tuas ações.</p>
           </div>
         </div>
       )}
 
-      <div className="grid gap-6 md:grid-cols-3">
-        <div className="rounded-xl border border-surface bg-surface p-6 shadow-sm">
-          <h3 className="text-sm font-medium text-muted">Aulas Concluídas</h3>
-          <p className="mt-2 text-3xl font-bold text-primary">{lessonsCompleted} <span className="text-xs font-normal text-muted">tópicos</span></p>
+      <div className="grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2 md:grid-cols-3">
+        <div className="rounded-xl border border-surface bg-surface p-4 sm:p-6 shadow-sm">
+          <h3 className="text-xs sm:text-sm font-medium text-muted">Aulas Concluídas</h3>
+          <p className="mt-2 text-2xl sm:text-3xl font-bold text-primary">{lessonsCompleted} <span className="text-xs font-normal text-muted">tópicos</span></p>
           <div className="mt-4 h-2 w-full overflow-hidden rounded-full bg-dark">
             <div className="h-full bg-primary transition-all duration-500" style={{ width: `${lessonsPercent}%` }} />
           </div>
         </div>
-        <div className="rounded-xl border border-surface bg-surface p-6 shadow-sm">
-          <h3 className="text-sm font-medium text-muted">Exercícios Resolvidos</h3>
-          <p className="mt-2 text-3xl font-bold text-secondary">{exercisesSolved}</p>
+        <div className="rounded-xl border border-surface bg-surface p-4 sm:p-6 shadow-sm">
+          <h3 className="text-xs sm:text-sm font-medium text-muted">Exercícios Resolvidos</h3>
+          <p className="mt-2 text-2xl sm:text-3xl font-bold text-secondary">{exercisesSolved}</p>
           <p className="mt-2 text-xs text-muted">Total acumulado: {xp} XP</p>
         </div>
-        <div className="rounded-xl border border-surface bg-surface p-6 shadow-sm">
-          <h3 className="text-sm font-medium text-muted">Dias Seguidos (Streak)</h3>
-          <p className="mt-2 text-3xl font-bold text-accent">{streak} 🔥</p>
+        <div className="rounded-xl border border-surface bg-surface p-4 sm:p-6 shadow-sm col-span-1 sm:col-span-2 md:col-span-1">
+          <h3 className="text-xs sm:text-sm font-medium text-muted">Dias Seguidos (Streak)</h3>
+          <p className="mt-2 text-2xl sm:text-3xl font-bold text-accent flex items-center gap-1.5">
+            {streak} <Flame className="w-6 h-6 sm:w-7 sm:h-7 text-accent" />
+          </p>
           <p className="mt-2 text-xs text-muted">Continua a aprender todos os dias!</p>
         </div>
       </div>
 
-      <div className="mt-12 grid gap-8 md:grid-cols-2">
+      <div className="mt-8 sm:mt-12 grid gap-6 sm:gap-8 grid-cols-1 md:grid-cols-2">
         <div>
-          <h2 className="mb-6 text-xl font-bold text-text">A tua próxima aula</h2>
-          <div className="flex flex-col justify-between rounded-xl border border-surface bg-surface p-6 h-[200px]">
+          <h2 className="mb-4 sm:mb-6 text-base sm:text-xl font-bold text-text">A tua próxima aula</h2>
+          <div className="flex flex-col justify-between rounded-xl border border-surface bg-surface p-4 sm:p-6 h-auto sm:h-[200px]">
             <div>
               <span className="inline-block rounded bg-secondary/10 px-2 py-1 text-xs font-semibold text-secondary">
                 {subjects[0]} • {profile?.classe || '12.ª Classe'}
               </span>
-              <h3 className="mt-3 text-lg font-bold text-text">Introdução à Matéria</h3>
-              <p className="mt-2 text-sm text-muted">Começa a aprender os conceitos básicos desta disciplina.</p>
+              <h3 className="mt-2 sm:mt-3 text-base sm:text-lg font-bold text-text">Introdução à Matéria</h3>
+              <p className="mt-1 sm:mt-2 text-xs sm:text-sm text-muted">Começa a aprender os conceitos básicos desta disciplina.</p>
             </div>
             <button 
-              onClick={() => router.push("/dashboard/tutor")}
-              className="mt-4 w-full rounded-lg bg-primary px-6 py-2 font-medium text-dark transition-opacity hover:opacity-90 cursor-pointer"
+              onClick={() => router.push("/dashboard/intelijai")}
+              className="mt-4 w-full rounded-lg bg-primary px-6 py-2.5 font-medium text-dark transition-opacity hover:opacity-90 cursor-pointer text-sm active:scale-[0.98]"
             >
-              Iniciar Aula com o Tutor IA
+              Iniciar Aula com a Emanus IA
             </button>
           </div>
         </div>
 
         <div>
-          <h2 className="mb-6 text-xl font-bold text-text">Aproveitamento nos Simulados</h2>
-          <div className="rounded-xl border border-surface bg-surface p-6 space-y-4 h-[200px] overflow-y-auto">
+          <h2 className="mb-4 sm:mb-6 text-base sm:text-xl font-bold text-text">Aproveitamento nos Simulados</h2>
+          <div className="rounded-xl border border-surface bg-surface p-4 sm:p-6 space-y-3 sm:space-y-4 h-auto sm:h-[200px] overflow-y-auto">
             {subjects.map((sub: string, i: number) => {
               const colors = ['bg-primary', 'bg-secondary', 'bg-accent', 'bg-orange-500', 'bg-purple-500', 'bg-green-500', 'bg-primary'];
               const textColors = ['text-primary', 'text-secondary', 'text-accent', 'text-orange-500', 'text-purple-500', 'text-green-500', 'text-primary'];
@@ -182,11 +252,11 @@ export default function DashboardPage() {
 
               return (
                 <div key={i}>
-                  <div className="flex justify-between text-sm mb-1">
-                    <span className="font-medium">{sub}</span>
-                    <span className={textColors[colorIdx]}>{subProgress === 0 ? "Sem dados" : `${subProgress}%`}</span>
+                  <div className="flex justify-between text-xs sm:text-sm mb-1">
+                    <span className="font-medium truncate mr-2">{sub}</span>
+                    <span className={`shrink-0 ${textColors[colorIdx]}`}>{subProgress === 0 ? "Sem dados" : `${subProgress}%`}</span>
                   </div>
-                  <div className="h-2 w-full bg-dark rounded-full overflow-hidden">
+                  <div className="h-1.5 sm:h-2 w-full bg-dark rounded-full overflow-hidden">
                     <div className={`h-full ${colors[colorIdx]} transition-all duration-500`} style={{ width: `${subProgress}%` }} />
                   </div>
                 </div>

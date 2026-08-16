@@ -23,7 +23,7 @@ export default function DottedSurfaceDemoPage() {
         {/* Description */}
         <p className="text-muted text-sm md:text-base leading-relaxed max-w-md">
           Esta superfície tridimensional interactiva simula ondas e partículas,
-          representando o fluxo de conhecimento na plataforma educacional EMAIT.
+          representando o fluxo de conhecimento na plataforma educacional Emanus IA.
         </p>
 
         {/* Buttons / CTA */}

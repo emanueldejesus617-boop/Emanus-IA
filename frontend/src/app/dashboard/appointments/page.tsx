@@ -149,28 +149,28 @@ export default function AppointmentsPage() {
   };
 
   return (
-    <div className="p-8 pb-20 max-w-7xl mx-auto">
-      <header className="mb-8">
-        <h1 className="text-3xl font-bold text-text">As minhas Aulas</h1>
-        <p className="mt-2 text-muted">Gere e visualize os seus agendamentos em tempo real.</p>
+    <div className="p-4 sm:p-8 pb-20 max-w-7xl mx-auto">
+      <header className="mb-6 sm:mb-8 border-b border-surface/40 sm:border-0 pb-4 sm:pb-0">
+        <h1 className="text-2xl sm:text-3xl font-bold text-text">As minhas Aulas</h1>
+        <p className="mt-1 sm:mt-2 text-xs sm:text-sm text-muted">Gere e visualize os seus agendamentos em tempo real.</p>
       </header>
 
       {error && (
-        <div className="mb-6 rounded-xl border border-danger/50 bg-danger/10 p-4 text-sm text-danger">
+        <div className="mb-6 rounded-xl border border-danger/50 bg-danger/10 p-4 text-xs sm:text-sm text-danger">
           {error}
         </div>
       )}
 
       {userRole === "tutor" && (
-        <div className="mb-10 rounded-xl border border-surface bg-surface p-6">
-          <h2 className="text-xl font-bold text-text mb-4">A minha Disponibilidade</h2>
-          <div className="flex flex-wrap gap-4 items-end">
-            <div>
+        <div className="mb-8 sm:mb-10 rounded-xl border border-surface bg-surface p-4 sm:p-6">
+          <h2 className="text-base sm:text-xl font-bold text-text mb-4">A minha Disponibilidade</h2>
+          <div className="flex flex-wrap gap-3 sm:gap-4 items-end">
+            <div className="w-full sm:w-auto">
               <label className="block text-xs text-muted mb-1">Dia da Semana</label>
               <select 
                 value={newAvail.dayOfWeek} 
                 onChange={e => setNewAvail({...newAvail, dayOfWeek: parseInt(e.target.value)})}
-                className="bg-dark border border-surface rounded-lg p-2 text-sm text-text outline-none focus:border-primary"
+                className="w-full sm:w-auto bg-dark border border-surface rounded-lg p-2 text-sm text-text outline-none focus:border-primary"
               >
                 <option value={1}>Segunda-feira</option>
                 <option value={2}>Terça-feira</option>
@@ -204,17 +204,17 @@ export default function AppointmentsPage() {
       )}
 
       <div>
-        <h2 className="text-xl font-bold text-text mb-4">Próximas Aulas</h2>
+        <h2 className="text-base sm:text-xl font-bold text-text mb-4">Próximas Aulas</h2>
         {loading && appointments.length === 0 ? (
-          <p className="text-muted">A carregar...</p>
+          <p className="text-muted text-sm">A carregar...</p>
         ) : appointments.length === 0 ? (
-          <div className="p-8 text-center bg-surface border border-surface rounded-xl">
-            <p className="text-muted">Nenhuma aula agendada.</p>
+          <div className="p-6 sm:p-8 text-center bg-surface border border-surface rounded-xl">
+            <p className="text-muted text-sm">Nenhuma aula agendada.</p>
           </div>
         ) : (
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
             {appointments.map(app => (
-              <div key={app.id} className="relative bg-surface rounded-xl p-5 border border-surface shadow-sm hover:border-primary/50 transition-colors">
+              <div key={app.id} className="relative bg-surface rounded-xl p-4 sm:p-5 border border-surface shadow-sm hover:border-primary/50 transition-colors active:scale-[0.99]">
                 <div className="flex justify-between items-start mb-3">
                   <div className={`text-xs px-2 py-1 rounded-md font-medium ${app.status === 'rescheduled' ? 'bg-secondary/10 text-secondary' : 'bg-primary/10 text-primary'}`}>
                     {app.status === 'rescheduled' ? 'Reagendado' : 'Agendado'}

@@ -10,7 +10,7 @@ export function SparklesPreview() {
   return (
     <div className="h-[40rem] w-full bg-dark flex flex-col items-center justify-center overflow-hidden rounded-md">
       <h1 className="md:text-7xl text-3xl lg:text-9xl font-bold text-center text-text relative z-20">
-        EMAIT
+        Emanus IA
       </h1>
       <div className="w-full max-w-[40rem] h-40 relative">
         {/* Gradients */}
@@ -63,7 +63,7 @@ export function SparklesPreviewDark() {
 }
 
 /**
- * SparklesPreviewColorful — Partículas verdes (cor primária do EMAIT)
+ * SparklesPreviewColorful — Partículas verdes (cor primária do Emanus IA)
  * com texto em gradiente. Perfeito para ecrãs de conquista/gamificação.
  */
 export function SparklesPreviewColorful() {

@@ -1,8 +1,6 @@
 import { FastifyInstance } from "fastify";
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import { db } from "../db/db";
-import * as schema from "../db/schema";
-import { eq, desc } from "drizzle-orm";
+import { firestore } from "../db/db";
 import { authenticateUser } from "./auth";
 import { safeParseJSON } from "../utils/jsonSanitizer";
 
@@ -15,42 +13,72 @@ export async function scheduleRoutes(fastify: FastifyInstance) {
     if (!decoded) return;
 
     try {
-      const userList = await db
-        .select()
-        .from(schema.users)
-        .where(eq(schema.users.id, decoded.id))
-        .limit(1);
+      const userRef = firestore.collection("users").doc(decoded.id);
+      const userDoc = await userRef.get();
+      let user: any = null;
 
-      if (userList.length === 0) {
-        return reply.status(404).send({ error: "Utilizador não encontrado" });
+      if (!userDoc.exists) {
+        const userSnapshot = await firestore.collection("users").where("email", "==", decoded.email?.toUpperCase()).limit(1).get();
+        if (userSnapshot.empty) {
+          return reply.status(404).send({ error: "Utilizador não encontrado" });
+        }
+        user = userSnapshot.docs[0].data();
+        user.id = userSnapshot.docs[0].id;
+      } else {
+        user = userDoc.data()!;
+        user.id = userDoc.id;
       }
 
-      const user = userList[0];
       const classe = user.classe || "12.ª Classe";
       const curso = user.curso || "Geral";
-      const subjects = user.subjects ? JSON.parse(user.subjects) : ["Língua Portuguesa", "Matemática", "Inglês", "Educação Física"];
+      const subjects = user.subjects ? (typeof user.subjects === 'string' ? JSON.parse(user.subjects) : user.subjects) : ["Língua Portuguesa", "Matemática", "Inglês", "Educação Física"];
 
-      const prompt = `Crie um plano de estudos semanal personalizado (segunda a sexta-feira) para um estudante angolano da ${classe} do curso ${curso}.
+      const body = request.body as { shift?: string };
+      const shift = body?.shift || "morning";
+
+      const shiftTimeMap: Record<string, { label: string; slots: string[] }> = {
+        morning: {
+          label: "manhã (07:00 - 12:30)",
+          slots: ["14:00 - 15:30", "16:00 - 17:30", "19:00 - 20:30"]
+        },
+        afternoon: {
+          label: "tarde (13:00 - 18:00)",
+          slots: ["06:00 - 07:30", "08:00 - 09:30", "19:30 - 21:00"]
+        },
+        night: {
+          label: "noite (18:30 - 23:00)",
+          slots: ["07:00 - 08:30", "10:00 - 11:30", "14:00 - 15:30"]
+        }
+      };
+
+      const shiftInfo = shiftTimeMap[shift] || shiftTimeMap.morning;
+      const freeSlots = shiftInfo.slots;
+
+      const prompt = `Crie um plano de estudos semanal personalizado (segunda-feira a domingo) para um estudante angolano da ${classe} do curso ${curso}.
+O estudante frequenta a escola no turno da ${shiftInfo.label}, portanto o horário de estudos deve ser agendado APENAS nos horários livres fora do turno escolar.
+Os horários livres disponíveis são: ${freeSlots.join(", ")}.
 As disciplinas que o estudante deve focar são: ${subjects.join(", ")}.
-Você deve retornar OBRIGATORIAMENTE um array JSON contendo exatamente 3 blocos de horários diários (manhã/tarde/noite conforme apropriado), com as seguintes chaves para cada objeto do array:
-- "time" (ex: "08:00 - 09:30")
+Você deve retornar OBRIGATORIAMENTE um array JSON contendo exatamente ${freeSlots.length} blocos de horários usando EXATAMENTE estes horários livres, com as seguintes chaves para cada objeto do array:
+- "time" (use EXATAMENTE um dos seguintes: ${freeSlots.map(s => `"${s}"`).join(", ")})
 - "monday" (disciplina e tópico)
 - "tuesday" (disciplina e tópico)
 - "wednesday" (disciplina e tópico)
 - "thursday" (disciplina e tópico)
 - "friday" (disciplina e tópico)
+- "saturday" (disciplina e tópico, ou "Revisão Livre" se o estudante precisar de descanso)
+- "sunday" (disciplina e tópico, ou "Descanso" para recuperação)
 
 Cada dia deve ter um tópico prático relacionado ao currículo do MINED de Angola (ex: "Matemática (Derivadas)", "História (Independência)", "Física (Mecânica)").
+Distribua as disciplinas de forma equilibrada ao longo da semana. Ao fim de semana use tópicos de revisão ou prática leve.
 Retorne APENAS o JSON válido sem formatação markdown ou blocos de código adicionais.`;
 
       const model = ai.getGenerativeModel({
-        model: "gemini-2.0-flash",
+        model: process.env.GEMINI_MODEL || "gemini-2.5-flash",
         generationConfig: {
           responseMimeType: "application/json"
         }
       });
 
-      // Retry logic for transient rate limit (429) errors
       let response;
       for (let attempt = 0; attempt < 3; attempt++) {
         try {
@@ -70,32 +98,29 @@ Retorne APENAS o JSON válido sem formatação markdown ou blocos de código adi
         throw new Error('Failed to get response from AI after retries');
       }
       let text = response.response.text().trim();
-      let weekData;
-      weekData = safeParseJSON(text);
+      let weekData = safeParseJSON(text);
       if (!weekData) {
         fastify.log.error({ raw: text }, "Failed to parse Gemini response even after sanitization");
         throw new Error("Formato de resposta do horário inválido.");
       }
 
-      // Check if user has an existing study plan
-      const existing = await db
-        .select()
-        .from(schema.studyPlans)
-        .where(eq(schema.studyPlans.userId, decoded.id))
-        .limit(1);
+      const snapshot = await firestore
+        .collection("study_plans")
+        .where("userId", "==", user.id)
+        .limit(1)
+        .get();
 
-      if (existing.length > 0) {
-        await db
-          .update(schema.studyPlans)
-          .set({
-            weekData: JSON.stringify(weekData),
-            createdAt: new Date().toISOString()
-          })
-          .where(eq(schema.studyPlans.userId, decoded.id));
+      if (!snapshot.empty) {
+        const docId = snapshot.docs[0].id;
+        await firestore.collection("study_plans").doc(docId).update({
+          weekData: JSON.stringify(weekData),
+          createdAt: new Date().toISOString()
+        });
       } else {
-        await db.insert(schema.studyPlans).values({
-          id: crypto.randomUUID(),
-          userId: decoded.id,
+        const planId = crypto.randomUUID();
+        await firestore.collection("study_plans").doc(planId).set({
+          id: planId,
+          userId: user.id,
           weekData: JSON.stringify(weekData),
           createdAt: new Date().toISOString()
         });
@@ -118,21 +143,63 @@ Retorne APENAS o JSON válido sem formatação markdown ou blocos de código adi
     if (!decoded) return;
 
     try {
-      const list = await db
-        .select()
-        .from(schema.studyPlans)
-        .where(eq(schema.studyPlans.userId, decoded.id))
-        .orderBy(desc(schema.studyPlans.createdAt))
-        .limit(1);
+      const snapshot = await firestore
+        .collection("study_plans")
+        .where("userId", "==", decoded.id)
+        .get();
 
-      if (list.length === 0) {
+      if (snapshot.empty) {
         return { weekData: null };
       }
 
-      return { weekData: JSON.parse(list[0].weekData) };
-    } catch (e) {
+      const docs = snapshot.docs.map(doc => doc.data() as any);
+      docs.sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || ""));
+      const plan = docs[0];
+
+      const weekData = typeof plan.weekData === 'string' ? JSON.parse(plan.weekData) : plan.weekData;
+      return { weekData };
+    } catch (e: any) {
       fastify.log.error(e);
       return reply.status(500).send({ error: "Erro ao buscar o horário atual" });
+    }
+  });
+
+  // PUT /update - Save manually edited schedule
+  fastify.put("/update", async (request, reply) => {
+    const decoded = await authenticateUser(request, reply);
+    if (!decoded) return;
+
+    try {
+      const { weekData } = request.body as { weekData: any[] };
+      if (!weekData || !Array.isArray(weekData)) {
+        return reply.status(400).send({ error: "Dados de horário inválidos." });
+      }
+
+      const snapshot = await firestore
+        .collection("study_plans")
+        .where("userId", "==", decoded.id)
+        .limit(1)
+        .get();
+
+      if (!snapshot.empty) {
+        const docId = snapshot.docs[0].id;
+        await firestore.collection("study_plans").doc(docId).update({
+          weekData: JSON.stringify(weekData)
+        });
+      } else {
+        const planId = crypto.randomUUID();
+        await firestore.collection("study_plans").doc(planId).set({
+          id: planId,
+          userId: decoded.id,
+          weekData: JSON.stringify(weekData),
+          createdAt: new Date().toISOString()
+        });
+      }
+
+      return { success: true, weekData };
+    } catch (e: any) {
+      fastify.log.error(e);
+      return reply.status(500).send({ error: "Erro ao guardar o horário editado." });
     }
   });
 }

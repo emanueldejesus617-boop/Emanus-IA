@@ -1,0 +1,39 @@
+# Walkthrough - Implementação das Melhorias de Segurança
+
+Concluímos com sucesso a implementação de todas as recomendações do relatório de segurança para mitigar vulnerabilidades e proteger o projeto contra possíveis ataques cibernéticos.
+
+---
+
+## Alterações Efetuadas
+
+### 1. Cabeçalhos de Segurança HTTP (Helmet)
+- **Onde:** [server.ts](file:///c:/Users/poiuj/Desktop/EMAIT/backend/src/server.ts)
+- **O que foi feito:** Instalado e configurado o `@fastify/helmet` para injetar cabeçalhos de segurança críticos automaticamente.
+- **Configurações aplicadas:**
+  - Content Security Policy (CSP) robusta permitindo apenas scripts locais, conexões locais (`'self'`) e de fontes seguras (`https:`, `wss:`).
+  - Prevenção nativa contra XSS Refletido, Clickjacking, MIME type Sniffing e degradação de protocolo SSL (HSTS).
+
+### 2. Rate Limiting de Autenticação e Resolução de Vazamento de Memória
+- **Onde:** [auth.ts](file:///c:/Users/poiuj/Desktop/EMAIT/backend/src/routes/auth.ts) e [rateLimit.ts](file:///c:/Users/poiuj/Desktop/EMAIT/backend/src/utils/rateLimit.ts)
+- **O que foi feito:**
+  - Aplicado limite de taxa no login (máx. 5 requisições/minuto) e registo (máx. 3 requisições/minuto) para bloquear ataques de força bruta ou preenchimento de credenciais.
+  - Corrigido o vazamento de memória em `rateLimit.ts`: agora os IPs são completamente removidos do `Map` quando o array de timestamps expira e é limpo.
+  - Implementado um sweep (limpeza) automático global a cada 5 minutos usando `setInterval` com `.unref()`, removendo entradas inativas do Map em segundo plano e prevenindo estouro de memória (Out of Memory).
+
+### 3. Fortalecimento de Palavra-Passe & Tratamento de Erros Zod
+- **Onde:** [auth.ts](file:///c:/Users/poiuj/Desktop/EMAIT/backend/src/routes/auth.ts)
+- **O que foi feito:**
+  - Atualizado o `RegisterSchema` exigindo agora: mínimo de 8 caracteres, pelo menos uma letra maiúscula, uma minúscula, um número e um caractere especial.
+  - Refatorado o tratamento de exceções de validação para capturar a primeira mensagem customizada do Zod e retorná-la diretamente no atributo `error` da API (permitindo ao frontend renderizar o erro específico na tela de forma amigável).
+
+### 4. Validação de Input com Zod nos Agendamentos
+- **Onde:** [appointments.ts](file:///c:/Users/poiuj/Desktop/EMAIT/backend/src/routes/appointments.ts)
+- **O que foi feito:**
+  - Implementados schemas Zod detalhados para todas as rotas (criação, edição e exclusão de agendamentos e horários disponíveis dos tutores).
+  - Substituída a conversão genérica `as any` por `.parse()` para garantir que payloads maliciosos, datas inválidas ou IDs em formatos corrompidos sejam rejeitados antes de alcançar o banco de dados.
+
+---
+
+## Validação e Testes de Compilação
+- O build do backend (`npm run build`) foi executado e concluiu com sucesso com **zero erros**.
+- Todas as validações sintáticas e de tipos no TypeScript foram resolvidas (incluindo o type casting de `JWT_SECRET`).

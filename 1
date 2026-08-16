@@ -1,0 +1,157 @@
+# Análise e Correção de Problemas – TUTOR IA
+
+Após análise completa do codebase (frontend Next.js + backend Fastify), foram identificados **85 problemas** visíveis no IDE, agrupados em 6 categorias. Abaixo estão todos os problemas e as soluções propostas.
+
+---
+
+## Problemas Identificados
+
+### 1. 🔴 CRÍTICO — Nome do modelo Gemini errado (Backend)
+**Ficheiro:** `backend/src/routes/ai.ts` (linha 121), `lessons.ts` (linha 142), `exams.ts` (linha 71)
+
+**Problema:** O modelo `"gemini-3.5-flash"` **não existe**. O modelo correto é `"gemini-1.5-flash"` (ou `"gemini-2.0-flash"`). Isto causa **falha total** em todas as funcionalidades de IA.
+
+**Solução:** Corrigir o nome do modelo em todos os 3 ficheiros.
+
+---
+
+### 2. 🔴 CRÍTICO — `useEffect` com dependência em falta (Dashboard page)
+**Ficheiro:** `frontend/src/app/dashboard/page.tsx` (linha 80-84)
+
+**Problema:** O `useEffect` chama `loadUserData()` e `loadDashboardData()` mas essas funções estão dentro do componente e não estão no array de dependências. O comentário `// eslint-disable-next-line react-hooks/exhaustive-deps` suprime o aviso em vez de corrigir. Além disso, as funções são recriadas a cada render, o que poderia causar loops infinitos.
+
+**Solução:** Envolver `loadUserData` e `loadDashboardData` em `useCallback`, ou mover a lógica diretamente para dentro do `useEffect`.
+
+---
+
+### 3. 🟠 IMPORTANTE — `useEffect` no layout com `router` como dependência instável
+**Ficheiro:** `frontend/src/app/dashboard/layout.tsx` (linha 26-35)
+
+**Problema:** `useEffect` tem `[router]` como dependência, mas `router` do Next.js não é estável entre renders. Isto provoca re-runs desnecessários.
+
+**Solução:** Usar `[]` como array de dependências ou `useRef` para estabilizar.
+
+---
+
+### 4. 🟠 IMPORTANTE — Funções duplicadas de renderização Markdown
+**Ficheiros:** `tutor/page.tsx` e `lessons/page.tsx`
+
+**Problema:** A função `parseInlineStyles` está **copiada** nos dois ficheiros. Código duplicado é difícil de manter e constitui má prática.
+
+**Solução:** Extrair para `src/lib/renderMarkdown.tsx` e importar nos dois ficheiros.
+
+---
+
+### 5. 🟡 MÉDIO — Tipagem fraca com `any`
+**Ficheiros:** `dashboard/page.tsx`, `tutor/page.tsx`, `lessons/page.tsx`, `auth.ts`
+
+**Problema:** Múltiplos usos de `useState<any>`, `res: any`, `err: any` causam os warnings do IDE.
+
+**Solução:** Adicionar tipos explícitos para os principais estados e parâmetros.
+
+---
+
+### 6. 🟡 MÉDIO — `"45 Dias"` hardcoded no Dashboard
+**Ficheiro:** `frontend/src/app/dashboard/page.tsx` (linha 117)
+
+**Problema:** O contador de dias restantes está fixo em `"45 Dias"`. Devia ser calculado dinamicamente em relação aos exames nacionais de Angola (normalmente em Novembro).
+
+**Solução:** Calcular dinamicamente os dias até ao exame nacional.
+
+---
+
+### 7. 🟡 MÉDIO — `window.speechSynthesis.cancel()` sem verificar `window`
+**Ficheiro:** `frontend/src/app/dashboard/lessons/page.tsx` (linha 62)
+
+**Problema:** No `useEffect` de cleanup, `window.speechSynthesis.cancel()` é chamado sem verificar se `window` existe — pode falhar em SSR ou contextos sem `window`.
+
+**Solução:** Verificar `typeof window !== "undefined"` e `"speechSynthesis" in window`.
+
+---
+
+### 8. 🟡 MÉDIO — `err: any` em catch blocks (ESLint warnings)
+**Vários ficheiros**
+
+**Problema:** O uso de `catch (err: any)` dispara warnings do TypeScript strict e do ESLint. Mesmo com a regra desligada, é má prática.
+
+**Solução:** Usar `err instanceof Error ? err.message : String(err)` ou `unknown`.
+
+---
+
+### 9. 🟢 MENOR — Animações CSS em falta (classes `animate-fade-in`, `animate-slide-up`)
+**Ficheiros:** `globals.css` e vários componentes
+
+**Problema:** Classes como `animate-fade-in`, `animate-slide-up`, `active:scale-98` são usadas mas **não estão definidas** no CSS global, causando que as animações não funcionem.
+
+**Solução:** Adicionar as keyframes e classes correspondentes no `globals.css`.
+
+---
+
+### 10. 🟢 MENOR — `cursor-pointer` em botões `disabled`
+**Vários ficheiros**
+
+**Problema:** Botões com `disabled` ainda têm `cursor-pointer`. O cursor deve mudar para `not-allowed` quando desativado.
+
+**Solução:** Adicionar `disabled:cursor-not-allowed` às classes dos botões relevantes.
+
+---
+
+## Proposed Changes
+
+### Backend
+
+#### [MODIFY] [ai.ts](file:///c:/Users/poiuj/Desktop/EMAIT/backend/src/routes/ai.ts)
+- Corrigir modelo de `"gemini-3.5-flash"` para `"gemini-1.5-flash"`
+
+#### [MODIFY] [lessons.ts](file:///c:/Users/poiuj/Desktop/EMAIT/backend/src/routes/lessons.ts)
+- Corrigir modelo de `"gemini-3.5-flash"` para `"gemini-1.5-flash"`
+
+#### [MODIFY] [exams.ts](file:///c:/Users/poiuj/Desktop/EMAIT/backend/src/routes/exams.ts)
+- Corrigir modelo de `"gemini-3.5-flash"` para `"gemini-1.5-flash"`
+
+---
+
+### Frontend — Novo utilitário compartilhado
+
+#### [NEW] [renderMarkdown.tsx](file:///c:/Users/poiuj/Desktop/EMAIT/frontend/src/lib/renderMarkdown.tsx)
+- Extrair `parseInlineStyles` e `renderMessageContent` para ficheiro partilhado
+
+---
+
+### Frontend — CSS Global
+
+#### [MODIFY] [globals.css](file:///c:/Users/poiuj/Desktop/EMAIT/frontend/src/app/globals.css)
+- Adicionar animações `animate-fade-in`, `animate-slide-up`, `active:scale-98`, `active:scale-99`
+
+---
+
+### Frontend — Páginas
+
+#### [MODIFY] [dashboard/page.tsx](file:///c:/Users/poiuj/Desktop/EMAIT/frontend/src/app/dashboard/page.tsx)
+- Corrigir `useEffect` com `useCallback`
+- Calcular dias restantes para exames dinamicamente
+- Melhorar tipagem
+
+#### [MODIFY] [dashboard/layout.tsx](file:///c:/Users/poiuj/Desktop/EMAIT/frontend/src/app/dashboard/layout.tsx)
+- Corrigir dependência do `useEffect` com `router`
+
+#### [MODIFY] [dashboard/tutor/page.tsx](file:///c:/Users/poiuj/Desktop/EMAIT/frontend/src/app/dashboard/tutor/page.tsx)
+- Usar `parseInlineStyles` e `renderMessageContent` do ficheiro partilhado
+
+#### [MODIFY] [dashboard/lessons/page.tsx](file:///c:/Users/poiuj/Desktop/EMAIT/frontend/src/app/dashboard/lessons/page.tsx)
+- Corrigir `window.speechSynthesis` sem verificação
+- Usar `parseInlineStyles` do ficheiro partilhado
+
+---
+
+## Verification Plan
+
+### Automated
+- `npx tsc --noEmit` no frontend — sem erros
+- `npx eslint src --ext .ts,.tsx` no frontend — sem warnings relevantes
+
+### Manual
+- Confirmar que o chat com o Tutor IA responde (modelo Gemini correto)
+- Confirmar que animações aparecem no dashboard e tutor
+- Confirmar que o contador de dias é dinâmico
+- Confirmar que buttons desativados mostram `cursor: not-allowed`

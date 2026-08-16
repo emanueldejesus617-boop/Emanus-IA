@@ -3,8 +3,11 @@ import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
 
 export const metadata: Metadata = {
-  title: "TUTOR IA | O teu professor",
+  title: "Emanus IA | O teu professor",
   description: "Construído em Angola. Para o mundo.",
+  icons: {
+    icon: "/icon.svg",
+  },
 };
 
 export default function RootLayout({

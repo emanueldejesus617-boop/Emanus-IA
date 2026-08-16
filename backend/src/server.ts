@@ -1,8 +1,11 @@
-import "dotenv/config";
+import dotenv from "dotenv";
+import path from "path";
+dotenv.config({ path: path.resolve(__dirname, "../.env"), override: true });
 import dns from "node:dns";
 dns.setDefaultResultOrder("ipv4first");
 import Fastify from "fastify";
 import cors from "@fastify/cors";
+import helmet from "@fastify/helmet";
 import { setupRoutes } from "./routes";
 import { seedAdminUser } from "./db/db";
 
@@ -18,9 +21,28 @@ const fastify = Fastify({
   logger: true,
 });
 
+fastify.setErrorHandler((error: any, request, reply) => {
+  fastify.log.error(error);
+  const statusCode = error.statusCode || 500;
+  reply.status(statusCode).send({
+    error: error.message || "Erro interno no servidor"
+  });
+});
+
 async function start() {
   try {
     const frontendUrl = process.env.FRONTEND_URL || "http://localhost:3000";
+    
+    // Register helmet first for global security headers
+    await fastify.register(helmet, {
+      contentSecurityPolicy: {
+        directives: {
+          defaultSrc: ["'none'"],
+          frameAncestors: ["'none'"],
+        },
+      },
+    });
+
     await fastify.register(cors, {
       origin: [frontendUrl, "http://localhost:3000", "http://127.0.0.1:3000"],
       credentials: true,

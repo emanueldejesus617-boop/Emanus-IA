@@ -1,0 +1,48 @@
+# Plano de Implementação - Melhorias de Segurança (Security Recommendations)
+
+Este plano descreve as alterações para reforçar a segurança da Emanus IA através da implementação das recomendações do relatório de segurança: validação estrita de inputs, proteção contra brute force, correção de vazamento de memória no rate limiter, e adição de cabeçalhos de segurança HTTP.
+
+## Alterações Propostas
+
+---
+
+### Backend
+
+#### 1. Instalação de Dependências
+Instalar o pacote `@fastify/helmet` na diretoria `backend` para prover cabeçalhos HTTP de segurança.
+
+#### [MODIFY] [server.ts](file:///c:/Users/poiuj/Desktop/EMAIT/backend/src/server.ts)
+- Importar e registar o plugin `@fastify/helmet` no Fastify.
+- Configurar diretivas básicas de segurança para habilitar CSP, HSTS, X-Frame-Options, etc.
+
+#### [MODIFY] [rateLimit.ts](file:///c:/Users/poiuj/Desktop/EMAIT/backend/src/utils/rateLimit.ts)
+- Corrigir o vazamento de memória em `ipRequests` removendo a chave do `Map` quando o array de timestamps estiver vazio.
+- Adicionar um mecanismo de sweep (limpeza) periódico global usando `setInterval` para apagar IPs inativos da memória e evitar crescimento indefinido.
+
+#### [MODIFY] [auth.ts](file:///c:/Users/poiuj/Desktop/EMAIT/backend/src/routes/auth.ts)
+- Aplicar o rate limit no endpoint `/login` e `/register` (máximo de 5 tentativas por minuto) para evitar ataques de força bruta.
+- Fortalecer o `RegisterSchema` com validações detalhadas de palavra-passe (mínimo 8 caracteres, maiúscula, minúscula, número e caractere especial).
+- Melhorar a captura de erro do Zod para retornar a mensagem de erro específica do Zod (ex: "Deve conter pelo menos um número") diretamente no campo `error` enviado ao frontend.
+
+#### [MODIFY] [appointments.ts](file:///c:/Users/poiuj/Desktop/EMAIT/backend/src/routes/appointments.ts)
+- Importar `zod`.
+- Criar esquemas de validação Zod:
+  - `CreateAppointmentSchema` para validar o corpo do agendamento.
+  - `UpdateAppointmentSchema` para validar alterações de agendamento (PATCH).
+  - `CreateAvailabilitySchema` para validar novas disponibilidades de tutores.
+  - `ParamsIdSchema` e `ParamsTutorIdSchema` para validar UUIDs nos parâmetros de rota.
+- Aplicar estes esquemas em todas as rotas de agendamento (POST, PATCH, DELETE e GET de disponibilidade) para evitar injeção de parâmetros maliciosos.
+
+---
+
+## Plano de Verificação
+
+### Testes de Compilação e Execução
+1. Executar `npm run build` na pasta `backend` para garantir que as alterações no TypeScript compilam sem erros.
+2. Iniciar o backend localmente para verificar se o `@fastify/helmet` e o rate limiter arrancam sem problemas.
+
+### Testes Manuais de Segurança
+1. **Validação de Palavra-Passe**: Tentar registar um utilizador com uma palavra-passe fraca (ex: `123456`) e verificar se o backend bloqueia e devolve o motivo específico.
+2. **Força Bruta no Login**: Submeter 6 tentativas de login consecutivas em menos de 1 minuto e garantir que a rota retorna erro `429 (Muitos pedidos)`.
+3. **Validação de Input**: Tentar enviar dados inválidos (ex: datas incorretas, IDs não formatados como UUID) para o endpoint de agendamentos e garantir que o backend rejeita com erro `400 (Dados inválidos)`.
+4. **Verificação de Cabeçalhos**: Verificar os cabeçalhos de resposta HTTP nas chamadas à API e confirmar que o `X-Frame-Options` e outros cabeçalhos de segurança estão presentes.

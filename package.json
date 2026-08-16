@@ -8,5 +8,8 @@
   ],
   "scripts": {
     "dev": "node dev.js"
+  },
+  "dependencies": {
+    "protobufjs": "^8.7.2"
   }
 }

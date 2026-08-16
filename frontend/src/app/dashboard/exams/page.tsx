@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { FileText, Check, BookOpen, BarChart3, GraduationCap, Trophy, Flame, X } from "lucide-react";
 
 type Question = {
   id: number;
@@ -37,6 +38,9 @@ export default function ExamsPage() {
   const [history, setHistory] = useState<ExamResult[]>([]);
   const [selectedHistoryExam, setSelectedHistoryExam] = useState<ExamResult | null>(null);
 
+  // Completed topics state — keyed by subject
+  const [completedTopics, setCompletedTopics] = useState<Record<string, string[]>>({});
+
   const loadHistory = async () => {
     const token = localStorage.getItem("token");
     if (!token) return;
@@ -50,6 +54,27 @@ export default function ExamsPage() {
       }
     } catch (e) {
       console.error("Error loading exam history", e);
+    }
+  };
+
+  const loadCompletedTopics = async () => {
+    const token = localStorage.getItem("token");
+    if (!token) return;
+    try {
+      const res = await fetch("/api/lessons/progress", {
+        headers: { "Authorization": `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data: { subject: string; topicName: string }[] = await res.json();
+        const grouped: Record<string, string[]> = {};
+        data.forEach(item => {
+          if (!grouped[item.subject]) grouped[item.subject] = [];
+          grouped[item.subject].push(item.topicName);
+        });
+        setCompletedTopics(grouped);
+      }
+    } catch (e) {
+      console.error("Error loading completed topics", e);
     }
   };
 
@@ -67,7 +92,9 @@ export default function ExamsPage() {
       }
     }
     loadHistory();
+    loadCompletedTopics();
   }, []);
+
 
   const startExam = async () => {
     const token = localStorage.getItem("token");
@@ -199,15 +226,15 @@ export default function ExamsPage() {
   const currentQuestion = questions[currentIdx];
 
   return (
-    <div className="p-8 pb-20 min-h-screen bg-dark flex flex-col justify-start">
+    <div className="p-4 sm:p-8 pb-20 min-h-screen bg-dark flex flex-col justify-start">
       {gameState === "setup" && (
-        <div className="max-w-xl mx-auto w-full mt-10 animate-slide-up">
-          <header className="mb-8 text-center">
-            <div className="inline-flex h-20 w-20 items-center justify-center rounded-full bg-primary/10 text-primary border border-primary/20 mb-6 shadow-[0_0_15px_rgba(0,200,150,0.15)] animate-pulse">
-              <span className="text-4xl">📝</span>
+        <div className="max-w-xl mx-auto w-full mt-4 sm:mt-10 animate-slide-up">
+          <header className="mb-6 sm:mb-8 text-center">
+            <div className="inline-flex h-16 w-16 sm:h-20 sm:w-20 items-center justify-center rounded-full bg-primary/10 text-primary border border-primary/20 mb-4 sm:mb-6 shadow-[0_0_15px_rgba(0,200,150,0.15)] animate-pulse">
+              <FileText className="w-7 h-7 sm:w-9 sm:h-9" />
             </div>
-            <h1 className="text-3xl font-bold text-text">Simulador de Exames Nacionais</h1>
-            <p className="mt-2 text-muted">Testa os teus conhecimentos com exames reais do Ministério da Educação (MINED) de Angola.</p>
+            <h1 className="text-2xl sm:text-3xl font-bold text-text">Simulador de Exames Nacionais</h1>
+            <p className="mt-2 text-xs sm:text-sm text-muted">Testa os teus conhecimentos com exames reais do Ministério da Educação (MINED) de Angola.</p>
           </header>
 
           {error && (
@@ -216,24 +243,68 @@ export default function ExamsPage() {
             </div>
           )}
 
-          <div className="rounded-2xl border border-surface bg-surface p-8 shadow-xl">
-            <h3 className="text-lg font-bold text-text mb-4">Escolhe uma Disciplina</h3>
-            <div className="grid grid-cols-2 gap-3 mb-8">
-              {subjects.map((sub: string) => (
-                <button
-                  key={sub}
-                  onClick={() => setSelectedSubject(sub)}
-                  className={`p-4 rounded-xl text-left border transition-all text-sm font-semibold cursor-pointer active:scale-98 ${selectedSubject === sub ? 'border-primary bg-primary/10 text-primary shadow-[0_0_10px_rgba(0,200,150,0.05)]' : 'border-muted/20 bg-dark/40 text-muted hover:text-text hover:bg-dark'}`}
-                >
-                  {sub}
-                </button>
-              ))}
+          <div className="rounded-2xl border border-surface bg-surface p-5 sm:p-8 shadow-xl">
+            <h3 className="text-base sm:text-lg font-bold text-text mb-4">Escolhe uma Disciplina</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-6">
+              {subjects.map((sub: string) => {
+                const topicsCount = (completedTopics[sub] || []).length;
+                const hasCompleted = topicsCount > 0;
+                return (
+                  <button
+                    key={sub}
+                    onClick={() => setSelectedSubject(sub)}
+                    className={`p-4 rounded-xl text-left border transition-all text-sm font-semibold cursor-pointer active:scale-98 relative ${
+                      selectedSubject === sub
+                        ? 'border-primary bg-primary/10 text-primary shadow-[0_0_10px_rgba(0,200,150,0.05)]'
+                        : 'border-muted/20 bg-dark/40 text-muted hover:text-text hover:bg-dark'
+                    }`}
+                  >
+                    <span>{sub}</span>
+                    {hasCompleted ? (
+                      <span className="block text-[10px] mt-1 font-normal text-primary/80 flex items-center gap-1">
+                        <Check className="w-3 h-3 text-primary" /> {topicsCount} aula{topicsCount !== 1 ? "s" : ""} concluída{topicsCount !== 1 ? "s" : ""}
+                      </span>
+                    ) : (
+                      <span className="block text-[10px] mt-1 font-normal text-muted/50">Sem aulas concluídas</span>
+                    )}
+                  </button>
+                );
+              })}
             </div>
+
+            {/* Emanus IA warning when selected subject has no completed lessons */}
+            {selectedSubject && (completedTopics[selectedSubject] || []).length === 0 && (
+              <div className="mb-6 flex gap-3 p-4 rounded-xl border border-danger/25 bg-danger/5 animate-slide-up">
+                <div className="h-8 w-8 rounded-full bg-danger/10 border border-danger/20 flex items-center justify-center flex-shrink-0 text-danger font-bold text-xs">!</div>
+                <div>
+                  <p className="text-xs font-bold text-danger">Emanus IA — Simulado Indisponível</p>
+                  <p className="text-xs text-muted mt-0.5 leading-relaxed">
+                    Não tens nenhuma aula concluída em <strong className="text-text">{selectedSubject}</strong>. Conclui pelo menos uma aula na aba <strong className="text-text">Aulas</strong> antes de poderes fazer um simulado.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Show completed topics used for the exam */}
+            {selectedSubject && (completedTopics[selectedSubject] || []).length > 0 && (
+              <div className="mb-6 p-4 rounded-xl border border-primary/15 bg-primary/5">
+                <p className="text-xs font-bold text-primary mb-2 flex items-center gap-1.5">
+                  <BookOpen className="w-4 h-4" /> Tópicos que vão aparecer no simulado:
+                </p>
+                <div className="flex flex-wrap gap-1.5">
+                  {(completedTopics[selectedSubject] || []).map((topic, i) => (
+                    <span key={i} className="px-2 py-1 bg-primary/10 border border-primary/20 rounded-lg text-[10px] text-primary font-medium">
+                      {topic}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
 
             <button
               onClick={startExam}
-              disabled={!selectedSubject}
-              className="w-full py-4 bg-primary text-dark font-bold rounded-xl hover:opacity-95 transition-opacity disabled:opacity-50 cursor-pointer shadow-lg text-center"
+              disabled={!selectedSubject || (completedTopics[selectedSubject] || []).length === 0}
+              className="w-full py-4 bg-primary text-dark font-bold rounded-xl hover:opacity-95 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer shadow-lg text-center"
             >
               Iniciar Simulado (5 Questões)
             </button>
@@ -242,7 +313,7 @@ export default function ExamsPage() {
           {/* Histórico de Simulados */}
           <div className="mt-12">
             <h2 className="text-xl font-bold text-text mb-4 flex items-center gap-2">
-              <span>📊</span> Os Teus Simulados Anteriores
+              <BarChart3 className="w-5 h-5 text-primary" /> Os Teus Simulados Anteriores
             </h2>
             {history.length === 0 ? (
               <div className="rounded-2xl border border-dashed border-muted/20 p-8 text-center text-muted text-sm">
@@ -358,8 +429,8 @@ export default function ExamsPage() {
             <div className="space-y-6 animate-slide-up">
               <div className="rounded-2xl border border-primary/20 bg-primary/5 p-5">
                 <div className="flex items-center gap-2 mb-2">
-                  <span className="text-sm">🎓</span>
-                  <h4 className="text-sm font-bold text-primary">Correção do Tutor IA</h4>
+                  <GraduationCap className="w-4 h-4 text-primary" />
+                  <h4 className="text-sm font-bold text-primary">Correção da Emanus IA</h4>
                 </div>
                 <p className="text-xs text-muted leading-relaxed">
                   {currentQuestion.explanation}
@@ -380,7 +451,7 @@ export default function ExamsPage() {
       {gameState === "finished" && (
         <div className="max-w-lg mx-auto w-full mt-10 text-center animate-slide-up">
           <div className="inline-flex h-24 w-24 items-center justify-center rounded-full bg-primary/10 text-primary border border-primary/20 mb-6 shadow-[0_0_20px_rgba(0,200,150,0.2)] animate-bounce">
-            <span className="text-5xl">🏆</span>
+            <Trophy className="w-12 h-12" />
           </div>
 
           <h2 className="text-3xl font-bold text-text mb-2">Simulado Concluído!</h2>
@@ -405,7 +476,7 @@ export default function ExamsPage() {
               </div>
               <div className="flex items-center gap-2">
                 <span className="text-2xl font-bold text-danger">{streakUpdated}</span>
-                <span className="text-2xl">🔥</span>
+                <Flame className="w-6 h-6 text-accent" />
               </div>
             </div>
           )}
@@ -438,9 +509,9 @@ export default function ExamsPage() {
               </div>
               <button 
                 onClick={() => setSelectedHistoryExam(null)}
-                className="h-8 w-8 rounded-full bg-dark/60 hover:bg-muted/20 text-text transition-colors flex items-center justify-center cursor-pointer border border-muted/10 font-bold"
+                className="h-8 w-8 rounded-full bg-dark/60 hover:bg-muted/20 text-text transition-colors flex items-center justify-center cursor-pointer border border-muted/10"
               >
-                ✕
+                <X className="w-4 h-4" />
               </button>
             </header>
             
@@ -481,10 +552,10 @@ export default function ExamsPage() {
 
                           if (isCorrect) {
                             optStyle = "border-primary/50 bg-primary/5 text-primary font-bold shadow-[0_0_10px_rgba(0,200,150,0.02)]";
-                            badge = <span className="text-[10px] px-2 py-0.5 bg-primary/10 text-primary border border-primary/20 rounded font-semibold">✔ Correta</span>;
+                            badge = <span className="text-[10px] px-2 py-0.5 bg-primary/10 text-primary border border-primary/20 rounded font-semibold flex items-center gap-1"><Check className="w-3 h-3" /> Correta</span>;
                           } else if (isSelected) {
                             optStyle = "border-danger/50 bg-danger/5 text-danger font-bold";
-                            badge = <span className="text-[10px] px-2 py-0.5 bg-danger/10 text-danger border border-danger/20 rounded font-semibold">✘ Escolha Errada</span>;
+                            badge = <span className="text-[10px] px-2 py-0.5 bg-danger/10 text-danger border border-danger/20 rounded font-semibold flex items-center gap-1"><X className="w-3 h-3" /> Escolha Errada</span>;
                           }
 
                           return (
@@ -497,7 +568,7 @@ export default function ExamsPage() {
                       </div>
                       {q.explanation && (
                         <div className="mt-4 ml-8 bg-primary/5 border border-primary/15 rounded-xl p-4 text-xs text-muted leading-relaxed">
-                          <span className="font-bold text-primary block mb-1">Dica do Tutor IA:</span>
+                          <span className="font-bold text-primary block mb-1">Dica da Emanus IA:</span>
                           {q.explanation}
                         </div>
                       )}

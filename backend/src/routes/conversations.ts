@@ -1,7 +1,5 @@
 import { FastifyInstance } from "fastify";
-import { db } from "../db/db";
-import * as schema from "../db/schema";
-import { eq, desc } from "drizzle-orm";
+import { firestore } from "../db/db";
 import { authenticateUser } from "./auth";
 
 export async function conversationsRoutes(fastify: FastifyInstance) {
@@ -11,11 +9,14 @@ export async function conversationsRoutes(fastify: FastifyInstance) {
     if (!decoded) return;
 
     try {
-      const list = await db
-        .select()
-        .from(schema.conversations)
-        .where(eq(schema.conversations.userId, decoded.id))
-        .orderBy(desc(schema.conversations.createdAt));
+      const snapshot = await firestore
+        .collection("conversations")
+        .where("userId", "==", decoded.id)
+        .get();
+      
+      const list = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      // Sort by createdAt descending
+      list.sort((a: any, b: any) => (b.createdAt || "").localeCompare(a.createdAt || ""));
       
       return list;
     } catch (e) {
@@ -32,29 +33,26 @@ export async function conversationsRoutes(fastify: FastifyInstance) {
     const { id } = request.params as { id: string };
 
     try {
-      // Verify conversation owner
-      const conversationList = await db
-        .select()
-        .from(schema.conversations)
-        .where(eq(schema.conversations.id, id))
-        .limit(1);
+      const convDoc = await firestore.collection("conversations").doc(id).get();
 
-      if (conversationList.length === 0) {
+      if (!convDoc.exists) {
         return reply.status(404).send({ error: "Conversa não encontrada" });
       }
 
-      if (conversationList[0].userId !== decoded.id) {
+      const convData = convDoc.data()!;
+      if (convData.userId !== decoded.id) {
         return reply.status(403).send({ error: "Acesso proibido" });
       }
 
-      const list = await db
-        .select()
-        .from(schema.messages)
-        .where(eq(schema.messages.conversationId, id))
-        .orderBy(schema.messages.createdAt);
+      const snapshot = await firestore
+        .collection("messages")
+        .where("conversationId", "==", id)
+        .get();
 
-      // Return messages formatted in the historical shape
-      const formatted = list.map((msg) => {
+      const msgList = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() as any }));
+      msgList.sort((a: any, b: any) => (a.createdAt || "").localeCompare(b.createdAt || ""));
+
+      const formatted = msgList.map((msg: any) => {
         const parts: any[] = [{ text: msg.content }];
         if (msg.mediaData && msg.mediaType) {
           parts.push({
@@ -85,24 +83,28 @@ export async function conversationsRoutes(fastify: FastifyInstance) {
     const { id } = request.params as { id: string };
 
     try {
-      // Verify conversation owner
-      const conversationList = await db
-        .select()
-        .from(schema.conversations)
-        .where(eq(schema.conversations.id, id))
-        .limit(1);
+      const convDoc = await firestore.collection("conversations").doc(id).get();
 
-      if (conversationList.length === 0) {
+      if (!convDoc.exists) {
         return reply.status(404).send({ error: "Conversa não encontrada" });
       }
 
-      if (conversationList[0].userId !== decoded.id) {
+      if (convDoc.data()!.userId !== decoded.id) {
         return reply.status(403).send({ error: "Acesso proibido" });
       }
 
-      // Manually cascade delete to ensure safety across SQLite instances
-      await db.delete(schema.messages).where(eq(schema.messages.conversationId, id));
-      await db.delete(schema.conversations).where(eq(schema.conversations.id, id));
+      // Delete conversation doc
+      await firestore.collection("conversations").doc(id).delete();
+
+      // Batch delete associated messages
+      const msgSnapshot = await firestore
+        .collection("messages")
+        .where("conversationId", "==", id)
+        .get();
+
+      const batch = firestore.batch();
+      msgSnapshot.docs.forEach(doc => batch.delete(doc.ref));
+      await batch.commit();
 
       return { success: true };
     } catch (e) {

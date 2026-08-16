@@ -19,7 +19,7 @@ export default function SparklesDemoPage() {
         <SparklesPreviewDark />
       </div>
 
-      {/* Demo 3 — Partículas coloridas (cor primária EMAIT) */}
+      {/* Demo 3 — Partículas coloridas (cor primária Emanus IA) */}
       <div className="w-full max-w-6xl mx-auto border border-surface rounded-xl overflow-hidden">
         <SparklesPreviewColorful />
       </div>

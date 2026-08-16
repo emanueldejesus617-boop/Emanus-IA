@@ -1,6 +1,6 @@
-# Plano de Implementação - Melhorias no Tutor IA (Áudio em Tempo Real e Limpeza Visual)
+# Plano de Implementação - Melhorias na Emanus IA (Áudio em Tempo Real e Limpeza Visual)
 
-Este plano descreve as alterações para otimizar o Tutor IA, minimizando símbolos de formatação que dificultam o aprendizado, removendo o botão de áudio manual e tocando a explicação falada automaticamente em tempo real (frase por frase) enquanto a resposta é escrita no ecrã.
+Este plano descreve as alterações para otimizar a Emanus IA, minimizando símbolos de formatação que dificultam o aprendizado, removendo o botão de áudio manual e tocando a explicação falada automaticamente em tempo real (frase por frase) enquanto a resposta é escrita no ecrã.
 
 ## Alterações Propostas
 
@@ -16,7 +16,7 @@ Este plano descreve as alterações para otimizar o Tutor IA, minimizando símbo
 ### Frontend
 
 #### [MODIFY] [page.tsx](file:///c:/Users/poiuj/Desktop/EMAIT/frontend/src/app/dashboard/tutor/page.tsx)
-1. **Remover o botão de áudio**: Retirar o botão com ícone de altifalante do cabeçalho da resposta do Tutor IA.
+1. **Remover o botão de áudio**: Retirar o botão com ícone de altifalante do cabeçalho da resposta da Emanus IA.
 2. **Implementar renderizador de texto limpo**: Substituir o simples `.split("\n")` por uma função que parseia formatação básica (negrito, marcadores) sem mostrar símbolos brutos (como `**` ou `*`).
 3. **Áudio automático e simultâneo (TTS Streaming)**:
    - Cancelar qualquer reprodução ativa ao submeter uma nova mensagem.

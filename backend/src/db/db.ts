@@ -1,34 +1,78 @@
-import { drizzle } from 'drizzle-orm/libsql';
-import { createClient } from '@libsql/client';
+import dotenv from 'dotenv';
+import path from 'path';
+dotenv.config({ path: path.resolve(__dirname, '../../.env'), override: true });
+import { initializeApp, getApps, cert } from 'firebase-admin/app';
+import { getFirestore } from 'firebase-admin/firestore';
+import { getAuth } from 'firebase-admin/auth';
 import bcrypt from 'bcrypt';
-import * as schema from './schema';
-import { eq } from 'drizzle-orm';
 
-const client = createClient({ url: 'file:sqlite.db' });
-export const db = drizzle(client, { schema });
+// Initialize Firebase Admin App singleton
+let app: any;
+
+if (getApps().length === 0) {
+  const projectId = process.env.FIREBASE_PROJECT_ID || process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || "emanus-ia";
+  const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
+  let privateKey = process.env.FIREBASE_PRIVATE_KEY;
+
+  if (privateKey) {
+    // Robust sanitization: trim, remove surrounding quotes (single or double), then replace escaped newlines
+    privateKey = privateKey.trim().replace(/^["']+|["']+$/g, '').replace(/\r/g, '').replace(/\\n/g, '\n');
+  }
+
+  let initialized = false;
+  if (clientEmail && privateKey) {
+    try {
+      app = initializeApp({
+        credential: cert({
+          projectId,
+          clientEmail,
+          privateKey,
+        }),
+      });
+      console.log("🔥 Firebase Admin inicializado com Chave de Serviço.");
+      initialized = true;
+    } catch (certErr: any) {
+      console.warn("⚠️ Aviso ao carregar Chave de Serviço do Firebase, a utilizar ID de Projeto como fallback:", certErr.message || certErr);
+    }
+  }
+  
+  if (!initialized) {
+    app = initializeApp({
+      projectId,
+    });
+    console.log(`🔥 Firebase Admin inicializado com ID de Projeto: ${projectId}`);
+  }
+} else {
+  app = getApps()[0];
+}
+
+const databaseId = process.env.FIREBASE_DATABASE_ID || "emanus-ia";
+export const firestore = getFirestore(app, databaseId);
+export const adminAuth = getAuth(app);
 
 export async function seedAdminUser() {
   const adminEmail = "EMANUELDEJESUS617@GMAIL.COM";
+  const adminPassword = process.env.ADMIN_PASSWORD || "TutorIA@Admin2026!";
+
   try {
-    const existing = await db.select().from(schema.users).where(eq(schema.users.email, adminEmail)).limit(1);
+    const userSnapshot = await firestore.collection('users').where('email', '==', adminEmail.toUpperCase()).limit(1).get();
     
-    if (existing.length === 0) {
-      const adminPassword = process.env.ADMIN_PASSWORD || "SONHOSGRANDES,MERECEM,SACRIFICIOS,GRANDES";
+    if (userSnapshot.empty) {
       const passwordHash = await bcrypt.hash(adminPassword, 10);
-      await db.insert(schema.users).values({
-        id: crypto.randomUUID(),
+      const adminId = "admin-default-id";
+      await firestore.collection('users').doc(adminId).set({
+        id: adminId,
         name: "Administrador",
-        email: adminEmail,
+        email: adminEmail.toUpperCase(),
         password: passwordHash,
         role: "admin",
-        xp: 0,
-        streak: 0,
+        xp: 100,
+        streak: 1,
         createdAt: new Date().toISOString()
       });
-      console.log("Admin user seeded in SQLite.");
+      console.log("✅ Utilizador Administrador semeado no Firebase Firestore.");
     }
-  } catch (err) {
-    console.error("Error seeding admin user:", err);
+  } catch (err: any) {
+    console.warn("Aviso na sementeira de admin no Firestore:", err.message || err);
   }
 }
-

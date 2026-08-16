@@ -11,17 +11,18 @@ export interface RateLimitOptions {
 
 /**
  * A lightweight in-memory rate limiter for Fastify routes.
+ * Always enforced — in development the limit is more generous (3x).
  * Throws a 429 response if the client has exceeded their limit.
  */
 export function rateLimit(
   request: FastifyRequest,
   reply: FastifyReply,
-  options: RateLimitOptions = { maxRequests: 5, windowMs: 60 * 1000 } // Default: 5 requests per minute
+  options: RateLimitOptions = { maxRequests: 5, windowMs: 60 * 1000 }
 ): boolean {
-  // Bypass rate limiting in development environment
-  if (process.env.NODE_ENV !== "production") {
-    return true;
-  }
+  const isProduction = process.env.NODE_ENV === "production";
+
+  // In development use a 3x more generous limit, but never fully bypass.
+  const effectiveMax = isProduction ? options.maxRequests : options.maxRequests * 3;
 
   const ip = request.ip || "unknown-ip";
   const now = Date.now();
@@ -32,12 +33,12 @@ export function rateLimit(
   // Filter out timestamps that are outside the current window
   timestamps = timestamps.filter(time => now - time < options.windowMs);
 
-  if (timestamps.length >= options.maxRequests) {
-    // Rate limit exceeded
+  if (timestamps.length >= effectiveMax) {
+    const retryAfter = Math.ceil((options.windowMs - (now - timestamps[0])) / 1000);
     reply.status(429).send({
       error: "Muitos pedidos",
       message: "Excedeste o limite de pedidos permitidos. Por favor, aguarda um momento antes de tentar novamente.",
-      retryAfterSeconds: Math.ceil((options.windowMs - (now - timestamps[0])) / 1000),
+      retryAfterSeconds: retryAfter,
     });
     return false;
   }
@@ -47,3 +48,19 @@ export function rateLimit(
   ipRequests.set(ip, timestamps);
   return true;
 }
+
+// Periodically sweep expired entries every 5 minutes to prevent memory leaks.
+// If an IP has no requests in the last 5 minutes, we completely delete its entry from the Map.
+setInterval(() => {
+  const now = Date.now();
+  const maxWindowMs = 5 * 60 * 1000; // 5 minutes
+  for (const [ip, timestamps] of ipRequests.entries()) {
+    const active = timestamps.filter(time => now - time < maxWindowMs);
+    if (active.length === 0) {
+      ipRequests.delete(ip);
+    } else {
+      ipRequests.set(ip, active);
+    }
+  }
+}, 5 * 60 * 1000).unref();
+

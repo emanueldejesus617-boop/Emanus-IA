@@ -16,7 +16,7 @@ Retorne OBRIGATORIAMENTE um array JSON contendo objetos com as chaves:
 - "question": string contendo o enunciado da questão
 - "options": um array contendo exatamente 4 alternativas de resposta (strings)
 - "correctIndex": número de 0 a 3 indicando a opção correta
-- "explanation": uma explicação didática do Tutor IA explicando o raciocínio correto.
+- "explanation": uma explicação didática da Emanus IA explicando o raciocínio correto.
 
 Retorne APENAS o JSON válido, sem qualquer tipo de formatação markdown, blocos de código ou caracteres adicionais.`;
 

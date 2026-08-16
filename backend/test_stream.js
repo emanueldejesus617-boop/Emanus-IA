@@ -6,7 +6,7 @@ const ai = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
 async function runStreamTest() {
   try {
     const model = ai.getGenerativeModel({
-      model: "gemini-flash-latest",
+      model: process.env.GEMINI_MODEL || "gemini-2.5-flash",
     });
 
     console.log("Starting stream...");

@@ -1,6 +1,6 @@
-import { sqliteTable, text, integer } from 'drizzle-orm/sqlite-core';
+import { pgTable, text, integer } from 'drizzle-orm/pg-core';
 
-export const users = sqliteTable('users', {
+export const users = pgTable('users', {
   id: text('id').primaryKey(),
   name: text('name').notNull(),
   email: text('email').notNull().unique(),
@@ -15,7 +15,7 @@ export const users = sqliteTable('users', {
   createdAt: text('created_at').notNull(),
 });
 
-export const conversations = sqliteTable('conversations', {
+export const conversations = pgTable('conversations', {
   id: text('id').primaryKey(),
   userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
   title: text('title').notNull(),
@@ -23,7 +23,7 @@ export const conversations = sqliteTable('conversations', {
   createdAt: text('created_at').notNull(),
 });
 
-export const messages = sqliteTable('messages', {
+export const messages = pgTable('messages', {
   id: text('id').primaryKey(),
   conversationId: text('conversation_id').notNull().references(() => conversations.id, { onDelete: 'cascade' }),
   role: text('role').notNull(), // 'user' | 'model'
@@ -33,14 +33,14 @@ export const messages = sqliteTable('messages', {
   createdAt: text('created_at').notNull(),
 });
 
-export const studyPlans = sqliteTable('study_plans', {
+export const studyPlans = pgTable('study_plans', {
   id: text('id').primaryKey(),
   userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
   weekData: text('week_data').notNull(), // JSON text representing study plan grid
   createdAt: text('created_at').notNull(),
 });
 
-export const examResults = sqliteTable('exam_results', {
+export const examResults = pgTable('exam_results', {
   id: text('id').primaryKey(),
   userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
   subject: text('subject').notNull(),
@@ -50,7 +50,7 @@ export const examResults = sqliteTable('exam_results', {
   createdAt: text('created_at').notNull(),
 });
 
-export const userCompletedTopics = sqliteTable('user_completed_topics', {
+export const userCompletedTopics = pgTable('user_completed_topics', {
   id: text('id').primaryKey(),
   userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
   subject: text('subject').notNull(),
@@ -58,7 +58,7 @@ export const userCompletedTopics = sqliteTable('user_completed_topics', {
   completedAt: text('completed_at').notNull(),
 });
 
-export const tutorAvailabilities = sqliteTable('tutor_availabilities', {
+export const tutorAvailabilities = pgTable('tutor_availabilities', {
   id: text('id').primaryKey(),
   tutorId: text('tutor_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
   dayOfWeek: integer('day_of_week').notNull(), // 0 for Sunday, 1 for Monday, etc.
@@ -66,7 +66,7 @@ export const tutorAvailabilities = sqliteTable('tutor_availabilities', {
   endTime: text('end_time').notNull(), // e.g. "16:00"
 });
 
-export const appointments = sqliteTable('appointments', {
+export const appointments = pgTable('appointments', {
   id: text('id').primaryKey(),
   tutorId: text('tutor_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
   studentId: text('student_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
@@ -77,3 +77,12 @@ export const appointments = sqliteTable('appointments', {
   subject: text('subject'), // optional subject of the class
   createdAt: text('created_at').notNull(),
 });
+
+export const quarterlyPrograms = pgTable('quarterly_programs', {
+  id: text('id').primaryKey(),
+  userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  subject: text('subject').notNull(),
+  topics: text('topics').notNull(), // JSON string representing string[]
+  createdAt: text('created_at').notNull(),
+});
+

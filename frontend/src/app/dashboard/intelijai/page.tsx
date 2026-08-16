@@ -1,6 +1,9 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import { MessageSquare, Zap, Mic } from "lucide-react";
+import { renderMessageContent } from "@/lib/renderMarkdown";
+import { cleanTextForTTS } from "@/lib/textSanitizer";
 
 type Message = {
   role: "user" | "model";
@@ -20,16 +23,18 @@ type Conversation = {
   createdAt: string;
 };
 
-export default function TutorPage() {
+export default function IntelijaiPage() {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [_isListening, setIsListening] = useState(false);
+  const [, setIsListening] = useState(false);
   const [profile, setProfile] = useState<{ classe?: string; curso?: string; subjects?: string[] } | null>(null);
-  const [activeSubject, setActiveSubject] = useState<string>("Geral");
+  const [activeSubject, setActiveSubject] = useState<string>("");
   const [historySidebarOpen, setHistorySidebarOpen] = useState(false);
+  const [audioSpeed, setAudioSpeed] = useState<number>(1.0);
+  const [isSpeaking, setIsSpeaking] = useState<boolean>(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const spokenOffsetRef = useRef<number>(0);
 
@@ -43,6 +48,7 @@ export default function TutorPage() {
   
   const [isRecording, setIsRecording] = useState(false);
   const [recordingTime, setRecordingTime] = useState(0);
+  const [personality, setPersonality] = useState<"step-by-step" | "direct" | "mixed">("step-by-step");
   
   const mediaRecorderRef = useRef<any>(null);
   const audioStreamRef = useRef<any>(null);
@@ -54,15 +60,33 @@ export default function TutorPage() {
   };
 
   useEffect(() => {
+    const stored = localStorage.getItem("emanus_personality");
+    if (stored) {
+      setPersonality(stored as any);
+    }
+
+    const handleChanged = () => {
+      const updated = localStorage.getItem("emanus_personality");
+      if (updated) {
+        setPersonality(updated as any);
+      }
+    };
+    window.addEventListener("emanusPersonalityChanged", handleChanged);
+    return () => {
+      window.removeEventListener("emanusPersonalityChanged", handleChanged);
+    };
+  }, []);
+
+  useEffect(() => {
     scrollToBottom();
   }, [messages]);
 
   // Load context from local storage if redirected from elsewhere
   useEffect(() => {
-    const context = localStorage.getItem("tutor_context");
+    const context = localStorage.getItem("intelijai_context");
     if (context) {
       setInput(context);
-      localStorage.removeItem("tutor_context");
+      localStorage.removeItem("intelijai_context");
     }
   }, []);
 
@@ -73,9 +97,6 @@ export default function TutorPage() {
       try {
         const parsed = JSON.parse(savedProfile);
         setProfile(parsed);
-        if (parsed.subjects && parsed.subjects.length > 0) {
-          setActiveSubject(parsed.subjects[0]);
-        }
       } catch (e) {
         console.error("Error parsing userProfile", e);
       }
@@ -89,6 +110,7 @@ export default function TutorPage() {
       if ("speechSynthesis" in window) {
         window.speechSynthesis.cancel();
       }
+      setIsSpeaking(false);
     };
   }, []);
 
@@ -118,6 +140,7 @@ export default function TutorPage() {
     if ("speechSynthesis" in window) {
       window.speechSynthesis.cancel();
     }
+    setIsSpeaking(false);
     spokenOffsetRef.current = 0;
     setIsLoading(true);
     setActiveConversationId(id);
@@ -174,6 +197,7 @@ export default function TutorPage() {
     if ("speechSynthesis" in window) {
       window.speechSynthesis.cancel();
     }
+    setIsSpeaking(false);
     spokenOffsetRef.current = 0;
     setActiveConversationId(null);
     setMessages([]);
@@ -181,18 +205,57 @@ export default function TutorPage() {
     setHistorySidebarOpen(false); // Close mobile drawer
   };
 
+  const stopAudio = () => {
+    if ("speechSynthesis" in window) {
+      window.speechSynthesis.cancel();
+      setIsSpeaking(false);
+    }
+  };
+
+  const handleToggleAudio = () => {
+    if (isSpeaking) {
+      stopAudio();
+    } else {
+      const modelMessages = messages.filter(m => m.role === "model");
+      if (modelMessages.length > 0) {
+        const lastModelMsg = modelMessages[modelMessages.length - 1];
+        const lastText = lastModelMsg?.parts.find(p => p.text)?.text;
+        if (lastText) {
+          if ("speechSynthesis" in window) {
+            window.speechSynthesis.cancel();
+          }
+          spokenOffsetRef.current = 0;
+          speakSegment(lastText);
+        }
+      }
+    }
+  };
+
   const speakSegment = (text: string) => {
     if (!("speechSynthesis" in window)) return;
     
-    const cleanText = text
-      .replace(/[*#`_\-]/g, "")
-      .replace(/\[\s*\]/g, "")
-      .trim();
+    const cleanText = cleanTextForTTS(text);
 
     if (!cleanText || cleanText.length < 2) return;
 
     const utterance = new SpeechSynthesisUtterance(cleanText);
-    utterance.lang = "pt-PT";
+    
+    // Escolhe a voz configurada pelo utilizador ou a melhor voz em Português disponível no browser
+    const voices = window.speechSynthesis.getVoices();
+    const savedVoiceURI = typeof window !== "undefined" ? localStorage.getItem("emanus_voice_uri") : null;
+    let ptVoice = savedVoiceURI ? voices.find(v => v.voiceURI === savedVoiceURI) : null;
+    if (!ptVoice) {
+      ptVoice = voices.find(v => /pt[-_]PT/i.test(v.lang)) || voices.find(v => /pt[-_]BR/i.test(v.lang)) || voices.find(v => /pt/i.test(v.lang)) || null;
+    }
+    utterance.lang = ptVoice?.lang || "pt-PT";
+    if (ptVoice) utterance.voice = ptVoice;
+    
+    utterance.rate = audioSpeed;
+    
+    utterance.onstart = () => setIsSpeaking(true);
+    utterance.onend = () => setIsSpeaking(false);
+    utterance.onerror = () => setIsSpeaking(false);
+
     window.speechSynthesis.speak(utterance);
   };
 
@@ -223,108 +286,9 @@ export default function TutorPage() {
     }
   };
 
-  const parseInlineStyles = (text: string) => {
-    let parts: (string | React.ReactNode)[] = [text];
-    
-    let tempParts: (string | React.ReactNode)[] = [];
-    for (const part of parts) {
-      if (typeof part === "string") {
-        const split = part.split(/\*\*([^*]+)\*\*/g);
-        for (let i = 0; i < split.length; i++) {
-          if (i % 2 === 1) {
-            tempParts.push(<strong key={`b-${i}`} className="font-bold text-primary">{split[i]}</strong>);
-          } else if (split[i]) {
-            tempParts.push(split[i]);
-          }
-        }
-      } else {
-        tempParts.push(part);
-      }
-    }
-    parts = tempParts;
 
-    tempParts = [];
-    for (const part of parts) {
-      if (typeof part === "string") {
-        const split = part.split(/\*([^*]+)\*/g);
-        for (let i = 0; i < split.length; i++) {
-          if (i % 2 === 1) {
-            tempParts.push(<em key={`i-${i}`} className="italic">{split[i]}</em>);
-          } else if (split[i]) {
-            tempParts.push(split[i]);
-          }
-        }
-      } else {
-        tempParts.push(part);
-      }
-    }
-    parts = tempParts;
 
-    tempParts = [];
-    for (const part of parts) {
-      if (typeof part === "string") {
-        const split = part.split(/`([^`]+)`/g);
-        for (let i = 0; i < split.length; i++) {
-          if (i % 2 === 1) {
-            tempParts.push(
-              <code key={`c-${i}`} className="bg-dark px-1.5 py-0.5 rounded text-xs font-mono border border-muted/20 text-accent">
-                {split[i]}
-              </code>
-            );
-          } else if (split[i]) {
-            tempParts.push(split[i]);
-          }
-        }
-      } else {
-        tempParts.push(part);
-      }
-    }
-    parts = tempParts;
-
-    return <>{parts}</>;
-  };
-
-  const renderMessageContent = (text: string) => {
-    return text.split("\n").map((line, index) => {
-      const headingMatch = line.match(/^(#{1,6})\s+(.*)$/);
-      if (headingMatch) {
-        const level = headingMatch[1].length;
-        const headingText = headingMatch[2];
-        const cleanedText = parseInlineStyles(headingText);
-        
-        switch (level) {
-          case 1:
-            return <h1 key={index} className="text-xl font-bold text-primary mt-4 mb-2">{cleanedText}</h1>;
-          case 2:
-            return <h2 key={index} className="text-lg font-bold text-primary mt-3 mb-2">{cleanedText}</h2>;
-          default:
-            return <h3 key={index} className="text-base font-bold text-primary mt-2 mb-1">{cleanedText}</h3>;
-        }
-      }
-
-      const listMatch = line.match(/^(\*|-)\s+(.*)$/);
-      if (listMatch) {
-        const itemText = listMatch[2];
-        return (
-          <div key={index} className="flex items-start gap-2 my-1 pl-2">
-            <span className="text-primary mt-1.5 select-none text-xs">•</span>
-            <span className="flex-1">{parseInlineStyles(itemText)}</span>
-          </div>
-        );
-      }
-
-      if (line.trim() === "") {
-        return <div key={index} className="h-2" />;
-      }
-
-      return (
-        <p key={index} className="leading-relaxed my-1">
-          {parseInlineStyles(line)}
-        </p>
-      );
-    });
-  };
-
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const _startListening = () => {
     // @ts-ignore
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -363,6 +327,7 @@ export default function TutorPage() {
     recognition.start();
   };
 
+
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -391,26 +356,80 @@ export default function TutorPage() {
 
   const startAudioRecording = async () => {
     if (isRecording) return;
-    
+
+    // --- Guard: verificar se estamos num contexto seguro ---
+    // navigator.mediaDevices só existe em HTTPS ou localhost (não em acesso por IP)
+    const hasMediaDevices =
+      typeof navigator !== "undefined" &&
+      navigator.mediaDevices &&
+      typeof navigator.mediaDevices.getUserMedia === "function";
+
+    // Fallback: API legada (Chrome antigo)
+    const legacyGetUserMedia =
+      typeof navigator !== "undefined" &&
+      (
+        (navigator as any).getUserMedia ||
+        (navigator as any).webkitGetUserMedia ||
+        (navigator as any).mozGetUserMedia
+      );
+
+    if (!hasMediaDevices && !legacyGetUserMedia) {
+      const isInsecure =
+        typeof window !== "undefined" &&
+        window.location.protocol !== "https:" &&
+        window.location.hostname !== "localhost" &&
+        window.location.hostname !== "127.0.0.1";
+
+      if (isInsecure) {
+        alert(
+          "[Aviso] O microfone requer uma ligação segura.\n\n" +
+          "Acede à aplicação através de:\n" +
+          "• http://localhost:3000 (em vez do IP)\n" +
+          "• ou https:// em produção\n\n" +
+          "O teu browser bloqueia o acesso ao microfone por IP não seguro."
+        );
+      } else {
+        alert(
+          "O teu browser não suporta gravação de áudio.\n" +
+          "Tenta usar Chrome, Edge ou Firefox atualizados."
+        );
+      }
+      return;
+    }
+
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      let stream: MediaStream;
+
+      if (hasMediaDevices) {
+        stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      } else {
+        // Fallback para API legada
+        stream = await new Promise<MediaStream>((resolve, reject) => {
+          const legacyFn =
+            (navigator as any).getUserMedia ||
+            (navigator as any).webkitGetUserMedia ||
+            (navigator as any).mozGetUserMedia;
+          legacyFn.call(navigator, { audio: true }, resolve, reject);
+        });
+      }
+
       audioStreamRef.current = stream;
-      
+
       const recorder = new MediaRecorder(stream);
       mediaRecorderRef.current = recorder;
-      
+
       const chunks: Blob[] = [];
       recorder.ondataavailable = (e) => {
         if (e.data.size > 0) chunks.push(e.data);
       };
-      
+
       recorder.onstop = () => {
         const audioBlob = new Blob(chunks, { type: recorder.mimeType || "audio/webm" });
         setAudioMimeType(audioBlob.type);
-        
+
         const previewUrl = URL.createObjectURL(audioBlob);
         setAudioPreviewUrl(previewUrl);
-        
+
         const reader = new FileReader();
         reader.onloadend = () => {
           const resultStr = reader.result as string;
@@ -419,18 +438,38 @@ export default function TutorPage() {
         };
         reader.readAsDataURL(audioBlob);
       };
-      
+
       setRecordingTime(0);
       setIsRecording(true);
       recorder.start();
-      
+
       recordingTimerRef.current = setInterval(() => {
         setRecordingTime(prev => prev + 1);
       }, 1000);
-      
-    } catch (err) {
+
+    } catch (err: unknown) {
       console.error("Error accessing microphone:", err);
-      alert("Não foi possível aceder ao microfone. Verifique as permissões do navegador.");
+
+      // Mensagem específica por tipo de erro
+      if (err instanceof DOMException) {
+        if (err.name === "NotAllowedError" || err.name === "PermissionDeniedError") {
+          alert(
+            "[Erro] Permissão do microfone negada.\n\n" +
+            "Para ativar:\n" +
+            "1. Clica no ícone de permissões na barra de endereço\n" +
+            "2. Permite o acesso ao microfone\n" +
+            "3. Recarrega a página"
+          );
+        } else if (err.name === "NotFoundError" || err.name === "DevicesNotFoundError") {
+          alert("[Erro] Nenhum microfone encontrado. Liga um microfone e tenta novamente.");
+        } else if (err.name === "NotReadableError") {
+          alert("[Erro] O microfone está a ser usado por outra aplicação. Fecha-a e tenta novamente.");
+        } else {
+          alert(`[Erro] Erro ao aceder ao microfone: ${err.message}`);
+        }
+      } else {
+        alert("[Erro] Não foi possível aceder ao microfone. Verifica as permissões do navegador.");
+      }
     }
   };
   
@@ -481,6 +520,7 @@ export default function TutorPage() {
     if ("speechSynthesis" in window) {
       window.speechSynthesis.cancel();
     }
+    setIsSpeaking(false);
     spokenOffsetRef.current = 0;
 
     const token = localStorage.getItem("token");
@@ -533,12 +573,19 @@ export default function TutorPage() {
           classe: profile?.classe,
           curso: profile?.curso,
           conversationId: activeConversationId || undefined,
-          subject: activeSubject
+          subject: activeSubject,
+          personality
         })
       });
 
       if (!res.ok) {
-        throw new Error("Falha na comunicação");
+        // Try to read the server's error message for better diagnostics
+        try {
+          const errData = await res.json();
+          throw new Error(errData.error || `Erro ${res.status}`);
+        } catch {
+          throw new Error(`Falha na comunicação (${res.status})`);
+        }
       }
 
       const reader = res.body?.getReader();
@@ -581,13 +628,31 @@ export default function TutorPage() {
 
               if (parsedData) {
                 if (parsedData.error) {
-                  throw new Error(parsedData.error);
+                  accumulatedText = "Ocorreu um erro: " + parsedData.error;
+                  setMessages(prev => {
+                    const newMsgs = [...prev];
+                    const lastMsg = newMsgs[newMsgs.length - 1];
+                    if (lastMsg && lastMsg.role === "model") {
+                      newMsgs[newMsgs.length - 1] = {
+                        ...lastMsg,
+                        parts: [{ text: accumulatedText }]
+                      };
+                    }
+                    return newMsgs;
+                  });
+                  done = true;
+                  break;
                 }
                 
-                // Catch conversationId if this is a newly created conversation
-                if (parsedData.conversationId && !hasReceivedConvId) {
-                  setActiveConversationId(parsedData.conversationId);
-                  hasReceivedConvId = true;
+                // Catch conversationId and subject if returned by backend
+                if (parsedData.conversationId) {
+                  if (!hasReceivedConvId) {
+                    setActiveConversationId(parsedData.conversationId);
+                    hasReceivedConvId = true;
+                  }
+                  if (parsedData.subject) {
+                    setActiveSubject(parsedData.subject);
+                  }
                   loadConversations(); // Reload sidebar list
                 }
 
@@ -634,6 +699,7 @@ export default function TutorPage() {
       if ("speechSynthesis" in window) {
         window.speechSynthesis.cancel();
       }
+      setIsSpeaking(false);
     } finally {
       setIsLoading(false);
     }
@@ -646,15 +712,28 @@ export default function TutorPage() {
     submitMessage(msg, messages);
   };
 
-  const subjects = profile?.subjects || ["Matemática", "Física", "Química", "Língua Portuguesa"];
+  const userSubjects = profile?.subjects || ["Matemática", "Física", "Química", "Língua Portuguesa"];
+  const subjects = userSubjects;
+
+  // Set initial active subject to first user subject if not already set
+  if (!activeSubject && userSubjects.length > 0) {
+    setActiveSubject(userSubjects[0]);
+  }
 
   // Conversas filtradas pela disciplina ativa
-  const filteredConversations = conversations.filter(c => c.subject === activeSubject);
+  const filteredConversations = conversations.filter(c => {
+    if (c.subject === activeSubject) return true;
+    if ((!c.subject || c.subject === "Geral" || !userSubjects.includes(c.subject)) && activeSubject === userSubjects[0]) {
+      return true;
+    }
+    return false;
+  });
 
   // Ao trocar de disciplina: reset do chat e filtra histórico
   const handleSubjectChange = (subject: string) => {
     if (subject === activeSubject) return;
     if ("speechSynthesis" in window) window.speechSynthesis.cancel();
+    setIsSpeaking(false);
     spokenOffsetRef.current = 0;
     setActiveSubject(subject);
     setActiveConversationId(null);
@@ -708,10 +787,10 @@ export default function TutorPage() {
 
         <div className="flex-1 overflow-y-auto px-4 py-4 space-y-2">
           {filteredConversations.length === 0 ? (
-            <div className="text-center text-xs text-muted py-8 px-2">
-              <div className="mb-2 text-2xl">💬</div>
-              Nenhuma conversa de <span className="text-primary font-semibold">{activeSubject}</span> ainda.
-              <br/>Inicia uma nova conversa acima!
+            <div className="text-center text-xs text-muted py-8 px-2 flex flex-col items-center">
+              <MessageSquare className="w-8 h-8 text-muted/60 mb-2" />
+              <span>Nenhuma conversa de <span className="text-primary font-semibold">{activeSubject}</span> ainda.</span>
+              <span className="mt-0.5">Inicia uma nova conversa acima!</span>
             </div>
           ) : (
             filteredConversations.map(conv => (
@@ -756,23 +835,96 @@ export default function TutorPage() {
           <div className="h-2 w-2 rounded-full bg-primary animate-pulse"></div>
           <span className="text-sm font-semibold text-text">{activeSubject}</span>
           {activeConversationId && (
-            <span className="text-xs text-muted ml-auto">
-              {filteredConversations.find(c => c.id === activeConversationId)?.title || "Conversa ativa"}
+            <span className="text-xs text-muted shrink-0 hidden sm:inline">
+              ({filteredConversations.find(c => c.id === activeConversationId)?.title || "Conversa ativa"})
             </span>
           )}
+
+          {/* Controlos de Áudio da Emanus */}
+          <div className="ml-auto flex items-center gap-2 bg-surface/50 border border-muted/10 rounded-xl px-2 py-1 shadow-sm">
+            {isSpeaking && (
+              <div className="flex items-center gap-0.5 px-1.5" title="A reproduzir áudio...">
+                <span className="w-0.5 h-3 bg-primary rounded-full animate-bounce"></span>
+                <span className="w-0.5 h-4.5 bg-primary rounded-full animate-bounce [animation-delay:0.15s]"></span>
+                <span className="w-0.5 h-2.5 bg-primary rounded-full animate-bounce [animation-delay:0.3s]"></span>
+              </div>
+            )}
+            
+            {/* Botão de Velocidade */}
+            <button
+              type="button"
+              onClick={() => {
+                const speeds = [1.0, 1.5, 2.0];
+                const nextIdx = (speeds.indexOf(audioSpeed) + 1) % speeds.length;
+                setAudioSpeed(speeds[nextIdx]);
+              }}
+              className="px-2 py-1 text-[10px] font-bold bg-dark hover:bg-dark/80 text-primary border border-muted/10 rounded-lg transition-all cursor-pointer active:scale-95 flex items-center gap-0.5"
+              title="Velocidade de Leitura"
+            >
+              <Zap className="w-3 h-3 text-primary" />
+              <span>{audioSpeed}x</span>
+            </button>
+
+            {/* Botão de Parar/Recomeçar */}
+            <button
+              type="button"
+              onClick={handleToggleAudio}
+              className={`p-1.5 rounded-lg border transition-all cursor-pointer active:scale-95 ${
+                isSpeaking 
+                  ? "bg-danger/10 border-danger/30 text-danger hover:bg-danger/20 shadow-[0_0_10px_rgba(239,68,68,0.15)]" 
+                  : messages.some(m => m.role === "model")
+                    ? "bg-primary/10 border-primary/30 text-primary hover:bg-primary/20 shadow-[0_0_10px_rgba(0,200,150,0.15)]"
+                    : "bg-dark/50 border-muted/10 text-muted opacity-50 cursor-not-allowed"
+              }`}
+              disabled={!isSpeaking && !messages.some(m => m.role === "model")}
+              title={isSpeaking ? "Parar Explicação de Áudio" : "Recomeçar Explicação de Áudio"}
+            >
+              {isSpeaking ? (
+                // Ícone de Stop Profissional
+                <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="4" y="4" width="16" height="16" rx="2" ry="2"></rect>
+                </svg>
+              ) : (
+                // Ícone de Play / Recomeçar Profissional
+                <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round">
+                  <polygon points="5 3 19 12 5 21 5 3"></polygon>
+                </svg>
+              )}
+            </button>
+          </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-8 pb-32">
-          <div className="max-w-3xl mx-auto space-y-6">
+        <div className="flex-1 overflow-y-auto p-4 sm:p-8 pb-32">
+          <div className="max-w-3xl mx-auto space-y-4 sm:space-y-6">
             {messages.length === 0 && (
-              <div className="text-center text-muted mt-10 animate-fade-in">
-                <div className="inline-flex h-20 w-20 items-center justify-center rounded-full bg-primary/10 text-primary border border-primary/20 mb-6 shadow-[0_0_15px_rgba(0,200,150,0.15)] animate-pulse">
-                  <span className="text-4xl">🎓</span>
+              <div className="text-center text-muted mt-6 animate-fade-in">
+                <div className="inline-flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10 text-primary border border-primary/20 mb-4 shadow-[0_0_15px_rgba(0,200,150,0.15)]">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round">
+                    {/* Outer ring */}
+                    <circle cx="12" cy="12" r="10" strokeWidth="1" strokeOpacity={0.25}/>
+                    {/* Triangle connections between outer nodes */}
+                    <line x1="12" y1="3.5" x2="5.5" y2="17" strokeWidth="0.75" strokeOpacity={0.3}/>
+                    <line x1="12" y1="3.5" x2="18.5" y2="17" strokeWidth="0.75" strokeOpacity={0.3}/>
+                    <line x1="5.5" y1="17" x2="18.5" y2="17" strokeWidth="0.75" strokeOpacity={0.3}/>
+                    {/* Hub lines from center */}
+                    <line x1="12" y1="9.5" x2="12" y2="5.3" strokeWidth="1" strokeOpacity={0.55}/>
+                    <line x1="9.8" y1="13.2" x2="7.2" y2="15.5" strokeWidth="1" strokeOpacity={0.55}/>
+                    <line x1="14.2" y1="13.2" x2="16.8" y2="15.5" strokeWidth="1" strokeOpacity={0.55}/>
+                    {/* Outer nodes */}
+                    <circle cx="12" cy="3.5" r="1.7" strokeWidth="1.4" fill="currentColor" fillOpacity={0.15}/>
+                    <circle cx="5.5" cy="17" r="1.7" strokeWidth="1.4" fill="currentColor" fillOpacity={0.15}/>
+                    <circle cx="18.5" cy="17" r="1.7" strokeWidth="1.4" fill="currentColor" fillOpacity={0.15}/>
+                    {/* Center node */}
+                    <circle cx="12" cy="12" r="2.6" strokeWidth="1.6" fill="currentColor" fillOpacity={0.25}/>
+                    {/* Center dot */}
+                    <circle cx="12" cy="12" r="1" fill="currentColor" strokeWidth={0}/>
+                  </svg>
                 </div>
-                <h2 className="text-2xl font-bold text-text mb-2">Sou o teu Tutor IA</h2>
-                <p className="max-w-md mx-auto text-sm text-muted mb-8">
-                  Estou pronto para ajudar-te com a disciplina de <span className="text-primary font-semibold">{activeSubject}</span> ({profile?.classe || "12.ª Classe"}). Faz-me uma pergunta ou envia um exercício!
+                <h2 className="text-2xl font-bold text-text mb-1">Sou a Emanus IA</h2>
+                <p className="max-w-md mx-auto text-xs text-muted mb-8">
+                  Estou pronta para ajudar-te com a disciplina de <span className="text-primary font-semibold">{activeSubject}</span>. Como posso ajudar-te hoje?
                 </p>
+
                 <div className="flex flex-wrap justify-center gap-3 max-w-2xl mx-auto">
                   {["Explica os principais conceitos", "Faz-me um resumo detalhado", "Dá-me um exercício resolvido"].map((suggestion, idx) => (
                     <button
@@ -796,7 +948,7 @@ export default function TutorPage() {
                   <div className={"max-w-[80%] rounded-2xl p-4 " + (msg.role === "user" ? "bg-primary text-dark rounded-br-none font-medium shadow-md" : "bg-surface border border-muted/10 text-text rounded-bl-none shadow-sm min-w-[150px]")}>
                     {msg.role === "model" && (
                       <div className="flex justify-between items-center w-full mb-2 pb-2 border-b border-muted/10 animate-fade-in">
-                        <span className="text-xs font-semibold text-primary/80">Tutor IA</span>
+                        <span className="text-xs font-semibold text-primary/80">Emanus IA</span>
                         {activeConversationId && (
                           <span className="text-[9px] text-muted">{activeSubject}</span>
                         )}
@@ -809,6 +961,7 @@ export default function TutorPage() {
                         <div>
                           {mediaPart.inlineData.mimeType.startsWith("image/") && (
                             <div className="mt-2 rounded-xl overflow-hidden border border-muted/10 max-w-sm shadow-sm bg-dark/30 p-1">
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
                               <img 
                                 src={`data:${mediaPart.inlineData.mimeType};base64,${mediaPart.inlineData.data}`} 
                                 alt="Imagem anexada" 
@@ -853,54 +1006,57 @@ export default function TutorPage() {
           </div>
         </div>
 
-        <div className="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-dark via-dark to-transparent">
+        <div className="absolute bottom-0 left-0 right-0 p-3 sm:p-6 bg-gradient-to-t from-dark via-dark to-transparent">
           <div className="max-w-3xl mx-auto">
             {/* Media previews */}
             {(imagePreview || audioPreviewUrl || isRecording) && (
-              <div className="mb-3 p-3 rounded-2xl bg-surface border border-muted/20 flex items-center justify-between gap-4 animate-slide-up">
+              <div className="mb-3 p-3 rounded-2xl bg-surface border border-muted/20 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 animate-slide-up">
                 {isRecording ? (
-                  <div className="flex items-center gap-3 w-full">
+                  <div className="flex flex-wrap items-center gap-2 sm:gap-3 w-full">
                     <span className="w-2.5 h-2.5 rounded-full bg-danger animate-pulse" />
-                    <span className="text-xs text-text font-bold">A gravar mensagem de voz...</span>
+                    <span className="text-xs text-text font-bold">A gravar áudio...</span>
                     <span className="text-xs text-muted font-mono">{Math.floor(recordingTime / 60)}:{(recordingTime % 60).toString().padStart(2, '0')}</span>
-                    <button
-                      type="button"
-                      onClick={cancelAudioRecording}
-                      className="ml-auto px-3 py-1 bg-dark text-muted hover:text-danger rounded-lg text-xs font-semibold border border-muted/10 transition-colors cursor-pointer"
-                    >
-                      Cancelar
-                    </button>
-                    <button
-                      type="button"
-                      onClick={stopAudioRecording}
-                      className="px-3 py-1 bg-primary text-dark font-bold rounded-lg text-xs transition-opacity cursor-pointer hover:opacity-95 shadow-md animate-pulse"
-                    >
-                      Parar e Anexar
-                    </button>
+                    <div className="ml-auto flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={cancelAudioRecording}
+                        className="px-2.5 py-1 bg-dark text-muted hover:text-danger rounded-lg text-xs font-semibold border border-muted/10 transition-colors cursor-pointer"
+                      >
+                        Cancelar
+                      </button>
+                      <button
+                        type="button"
+                        onClick={stopAudioRecording}
+                        className="px-3 py-1 bg-primary text-dark font-bold rounded-lg text-xs transition-opacity cursor-pointer hover:opacity-95 shadow-md animate-pulse"
+                      >
+                        Parar
+                      </button>
+                    </div>
                   </div>
                 ) : (
                   <>
-                    <div className="flex items-center gap-3 overflow-hidden">
+                    <div className="flex items-center gap-3 overflow-hidden w-full sm:w-auto">
                       {imagePreview && (
-                        <div className="relative h-14 w-14 rounded-lg overflow-hidden border border-muted/10 bg-dark shrink-0">
+                        <div className="relative h-12 w-12 sm:h-14 sm:w-14 rounded-lg overflow-hidden border border-muted/10 bg-dark shrink-0">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
                           <img src={imagePreview} alt="Preview" className="h-full w-full object-cover" />
                         </div>
                       )}
                       {audioPreviewUrl && (
-                        <div className="flex items-center gap-2">
-                          <span className="text-xl">🎙️</span>
-                          <audio src={audioPreviewUrl} controls className="h-8 w-60 accent-primary" />
+                        <div className="flex items-center gap-2 max-w-[200px] sm:max-w-none">
+                          <Mic className="w-5 h-5 text-primary shrink-0" />
+                          <audio src={audioPreviewUrl} controls className="h-8 w-44 sm:w-60 accent-primary" />
                         </div>
                       )}
-                      <div className="flex flex-col text-left">
-                        <span className="text-xs font-bold text-text">Ficheiro Anexado</span>
-                        <span className="text-[10px] text-muted">{imagePreview ? 'Imagem para o Tutor analisar' : 'Mensagem de voz gravada'}</span>
+                      <div className="flex flex-col text-left truncate">
+                        <span className="text-xs font-bold text-text truncate">Ficheiro Anexado</span>
+                        <span className="text-[10px] text-muted truncate">{imagePreview ? 'Imagem' : 'Áudio gravado'}</span>
                       </div>
                     </div>
                     <button
                       type="button"
                       onClick={imagePreview ? removeImage : removeAudio}
-                      className="p-1 text-muted hover:text-danger rounded transition-colors cursor-pointer"
+                      className="p-1 text-muted hover:text-danger rounded transition-colors cursor-pointer self-end sm:self-center"
                       title="Remover anexo"
                     >
                       <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
@@ -921,43 +1077,43 @@ export default function TutorPage() {
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
-                className="absolute left-4 p-2 rounded-full text-muted hover:text-primary transition-colors cursor-pointer disabled:opacity-50 z-10"
+                className="absolute left-3.5 sm:left-4 p-2 rounded-full text-muted hover:text-primary transition-colors cursor-pointer disabled:opacity-50 z-10"
                 title="Anexar imagem"
                 disabled={isLoading || isRecording || (audioPreviewUrl !== null)}
               >
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="sm:w-5 sm:h-5"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
               </button>
               <input
                 type="text"
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
-                placeholder={isRecording ? "Gravação em curso..." : `Escreve a tua dúvida de ${activeSubject} aqui...`}
+                placeholder={isRecording ? "Gravação..." : `Dúvida de ${activeSubject}...`}
                 disabled={isLoading || isRecording}
-                className="w-full bg-surface/80 border border-muted/30 rounded-full py-4 pl-14 pr-24 text-text focus:outline-none focus:border-primary/60 focus:ring-2 focus:ring-primary/20 shadow-lg disabled:opacity-50 text-sm transition-all placeholder:text-muted/60"
+                className="w-full bg-surface/80 border border-muted/30 rounded-full py-3.5 sm:py-4 pl-12 sm:pl-14 pr-20 sm:pr-24 text-text focus:outline-none focus:border-primary/60 focus:ring-2 focus:ring-primary/20 shadow-lg disabled:opacity-50 text-xs sm:text-sm transition-all placeholder:text-muted/60"
               />
               <button
                 type="button"
                 onClick={isRecording ? stopAudioRecording : startAudioRecording}
                 disabled={isLoading || (imagePreview !== null)}
-                className={`absolute right-14 p-2 rounded-full transition-colors cursor-pointer ${isRecording ? 'text-danger animate-pulse' : 'text-muted hover:text-primary'} disabled:opacity-50`}
+                className={`absolute right-12 sm:right-14 p-2 rounded-full transition-colors cursor-pointer ${isRecording ? 'text-danger animate-pulse' : 'text-muted hover:text-primary'} disabled:opacity-50`}
                 title={isRecording ? "Parar Gravação" : "Gravar Áudio"}
               >
                 {isRecording ? (
-                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="4" y="4" width="16" height="16" rx="2" ry="2"/></svg>
+                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="sm:w-5 sm:h-5"><rect x="4" y="4" width="16" height="16" rx="2" ry="2"/></svg>
                 ) : (
-                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/></svg>
+                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="sm:w-5 sm:h-5"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/></svg>
                 )}
               </button>
               <button
                 type="submit"
                 disabled={(!input.trim() && !imagePreview && !audioBase64) || isLoading || isRecording}
-                className="absolute right-2.5 p-2 bg-primary rounded-full text-dark hover:opacity-90 disabled:opacity-50 transition-opacity cursor-pointer"
+                className="absolute right-2 sm:right-2.5 p-2 bg-primary rounded-full text-dark hover:opacity-90 disabled:opacity-50 transition-opacity cursor-pointer"
               >
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="sm:w-5 sm:h-5"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>
               </button>
             </form>
-            <p className="text-center text-[10px] text-muted mt-3">
-              Tutor IA pode cometer erros. Confirma as respostas importantes.
+            <p className="text-center text-[10px] text-muted mt-2.5 sm:mt-3 truncate">
+              Emanus IA pode cometer erros. Confirma as respostas importantes.
             </p>
           </div>
         </div>

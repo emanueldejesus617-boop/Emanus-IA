@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { AlertTriangle, Shield, Users, Zap, FileText, BookOpen, Flame } from "lucide-react";
 
 type Stats = {
   totalStudents: number;
@@ -92,7 +93,7 @@ export default function AdminPage() {
       <div className="p-8 pb-20 min-h-screen bg-dark flex items-center justify-center">
         <div className="max-w-md w-full bg-surface border border-danger/20 rounded-2xl p-8 text-center shadow-xl">
           <div className="inline-flex h-16 w-16 items-center justify-center rounded-full bg-danger/10 text-danger border border-danger/25 mb-4 font-bold text-2xl">
-            ⚠️
+            <AlertTriangle className="w-8 h-8 text-danger" />
           </div>
           <h2 className="text-xl font-bold text-text mb-2">Sem Autorização</h2>
           <p className="text-sm text-muted mb-6">{error}</p>
@@ -108,12 +109,12 @@ export default function AdminPage() {
   }
 
   return (
-    <div className="p-8 pb-20 max-w-7xl mx-auto w-full min-h-screen bg-dark">
-      <header className="mb-8">
-        <h1 className="text-3xl font-bold text-text flex items-center gap-2.5">
-          <span>🛡️</span> Painel de Controlo Administrativo
+    <div className="p-4 sm:p-8 pb-20 max-w-7xl mx-auto w-full min-h-screen bg-dark">
+      <header className="mb-6 sm:mb-8 border-b border-surface/40 sm:border-0 pb-4 sm:pb-0">
+        <h1 className="text-2xl sm:text-3xl font-bold text-text flex items-center gap-2.5">
+          <Shield className="w-6 h-6 sm:w-7 sm:h-7 text-primary shrink-0" /> Painel de Controlo Administrativo
         </h1>
-        <p className="mt-2 text-muted">Acompanha a adoção dos alunos, engajamento e métricas gerais da plataforma EMAIT.</p>
+        <p className="mt-1 sm:mt-2 text-xs sm:text-sm text-muted">Acompanha a adoção dos alunos, engajamento e métricas gerais da plataforma Emanus IA.</p>
       </header>
 
       {isLoading ? (
@@ -127,8 +128,8 @@ export default function AdminPage() {
           {stats && (
             <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
               <div className="rounded-2xl border border-surface bg-surface p-6 shadow-sm flex items-center gap-4">
-                <div className="h-12 w-12 rounded-xl bg-primary/10 border border-primary/20 text-primary flex items-center justify-center text-xl font-bold">
-                  👥
+                <div className="h-12 w-12 rounded-xl bg-primary/10 border border-primary/20 text-primary flex items-center justify-center text-xl font-bold shrink-0">
+                  <Users className="w-6 h-6" />
                 </div>
                 <div>
                   <span className="text-xs text-muted block font-medium">Alunos Inscritos</span>
@@ -137,8 +138,8 @@ export default function AdminPage() {
               </div>
               
               <div className="rounded-2xl border border-surface bg-surface p-6 shadow-sm flex items-center gap-4">
-                <div className="h-12 w-12 rounded-xl bg-secondary/10 border border-secondary/20 text-secondary flex items-center justify-center text-xl font-bold">
-                  ⚡
+                <div className="h-12 w-12 rounded-xl bg-secondary/10 border border-secondary/20 text-secondary flex items-center justify-center text-xl font-bold shrink-0">
+                  <Zap className="w-6 h-6" />
                 </div>
                 <div>
                   <span className="text-xs text-muted block font-medium">Média de XP</span>
@@ -147,8 +148,8 @@ export default function AdminPage() {
               </div>
 
               <div className="rounded-2xl border border-surface bg-surface p-6 shadow-sm flex items-center gap-4">
-                <div className="h-12 w-12 rounded-xl bg-accent/10 border border-accent/20 text-accent flex items-center justify-center text-xl font-bold">
-                  📝
+                <div className="h-12 w-12 rounded-xl bg-accent/10 border border-accent/20 text-accent flex items-center justify-center text-xl font-bold shrink-0">
+                  <FileText className="w-6 h-6" />
                 </div>
                 <div>
                   <span className="text-xs text-muted block font-medium">Exames Realizados</span>
@@ -157,8 +158,8 @@ export default function AdminPage() {
               </div>
 
               <div className="rounded-2xl border border-surface bg-surface p-6 shadow-sm flex items-center gap-4">
-                <div className="h-12 w-12 rounded-xl bg-purple-500/10 border border-purple-500/20 text-purple-400 flex items-center justify-center text-xl font-bold">
-                  📚
+                <div className="h-12 w-12 rounded-xl bg-purple-500/10 border border-purple-500/20 text-purple-400 flex items-center justify-center text-xl font-bold shrink-0">
+                  <BookOpen className="w-6 h-6" />
                 </div>
                 <div>
                   <span className="text-xs text-muted block font-medium">Aulas Concluídas</span>
@@ -244,7 +245,7 @@ export default function AdminPage() {
                         <td className="p-4 font-bold text-accent">{u.xp} XP</td>
                         <td className="p-4">
                           <span className="inline-flex items-center gap-1 font-semibold text-text">
-                            {u.streak} 🔥
+                            {u.streak} <Flame className="w-3.5 h-3.5 text-accent" />
                           </span>
                         </td>
                         <td className="p-4 text-muted">

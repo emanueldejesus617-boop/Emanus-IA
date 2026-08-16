@@ -2,6 +2,9 @@
 
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { Check, X, ArrowLeft } from "lucide-react";
+import { renderMessageContent } from "@/lib/renderMarkdown";
+import { cleanTextForTTS } from "@/lib/textSanitizer";
 
 const CURRICULUM: Record<string, string[]> = {
   "Matemática": ["Trigonometria", "Geometria Espacial", "Limites e Sucessões", "Derivadas", "Estatística e Probabilidades"],
@@ -57,6 +60,18 @@ export default function LessonsPage() {
   const [error, setError] = useState("");
   const [isPlaying, setIsPlaying] = useState(false);
 
+  // Program editor state
+  const [programs, setPrograms] = useState<Record<string, string[]>>({});
+  const [programsLoading, setProgramsLoading] = useState(true);
+  const [isEditingProgram, setIsEditingProgram] = useState(false);
+  const [programInput, setProgramInput] = useState("");
+  const [savingProgram, setSavingProgram] = useState(false);
+
+  // New state variables for MINED curriculum validation
+  const [invalidTopics, setInvalidTopics] = useState<string[]>([]);
+  const [officialCurriculum, setOfficialCurriculum] = useState<string[]>([]);
+  const [curriculumSearch, setCurriculumSearch] = useState("");
+
   useEffect(() => {
     return () => {
       window.speechSynthesis.cancel();
@@ -80,14 +95,116 @@ export default function LessonsPage() {
     }
   };
 
+  const loadPrograms = async () => {
+    const token = localStorage.getItem("token");
+    if (!token) return;
+    try {
+      const res = await fetch("/api/lessons/programs", {
+        headers: { "Authorization": `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        const progMap: Record<string, string[]> = {};
+        data.forEach((p: any) => {
+          progMap[p.subject] = p.topics;
+        });
+        setPrograms(progMap);
+      }
+    } catch (err) {
+      console.error("Error loading quarterly programs:", err);
+    } finally {
+      setProgramsLoading(false);
+    }
+  };
+
   useEffect(() => {
     const storedProfile = localStorage.getItem("userProfile");
     if (storedProfile) setProfile(JSON.parse(storedProfile));
     loadProgress();
+    loadPrograms();
   }, []);
 
+  // Fetch official curriculum when a subject is chosen
+  useEffect(() => {
+    if (selectedSubject) {
+      setCurriculumSearch("");
+      setInvalidTopics([]);
+      const token = localStorage.getItem("token");
+      if (token) {
+        fetch(`/api/lessons/curriculum?subject=${encodeURIComponent(selectedSubject)}`, {
+          headers: { "Authorization": `Bearer ${token}` }
+        })
+          .then(res => res.json())
+          .then(data => {
+            if (Array.isArray(data)) {
+              setOfficialCurriculum(data);
+            }
+          })
+          .catch(err => console.error("Error fetching official curriculum:", err));
+      }
+    } else {
+      setOfficialCurriculum([]);
+      setInvalidTopics([]);
+    }
+  }, [selectedSubject, isEditingProgram]);
+
+  // Update program input when subject or editing state changes
+  useEffect(() => {
+    if (selectedSubject) {
+      const topics = programs[selectedSubject] || [];
+      setProgramInput(topics.join("\n"));
+    } else {
+      setProgramInput("");
+    }
+  }, [selectedSubject, isEditingProgram, programs]);
+
+  const handleSaveProgram = async () => {
+    if (!selectedSubject) return;
+    setSavingProgram(true);
+    setError("");
+    setInvalidTopics([]);
+
+    const token = localStorage.getItem("token");
+    if (!token) return;
+
+    const topics = programInput
+      .split("\n")
+      .map(t => t.trim())
+      .filter(t => t.length > 0);
+
+    try {
+      const res = await fetch("/api/lessons/programs", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${token}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          subject: selectedSubject,
+          topics
+        })
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        if (data.invalidTopics) {
+          setInvalidTopics(data.invalidTopics);
+        }
+        throw new Error(data.error || "Erro ao guardar o programa.");
+      }
+
+      await loadPrograms();
+      setIsEditingProgram(false);
+      setInvalidTopics([]);
+    } catch (err: any) {
+      setError(err.message || "Não foi possível guardar o programa.");
+    } finally {
+      setSavingProgram(false);
+    }
+  };
+
   const getTopicsForSubject = (subject: string) => {
-    return CURRICULUM[subject] || DEFAULT_TOPICS;
+    return programs[subject] || [];
   };
 
   const isTopicCompleted = (subject: string, topic: string) => {
@@ -98,6 +215,7 @@ export default function LessonsPage() {
 
   const getSubjectProgress = (subject: string) => {
     const topics = getTopicsForSubject(subject);
+    if (topics.length === 0) return 0;
     const completed = topics.filter(t => isTopicCompleted(subject, t)).length;
     return Math.round((completed / topics.length) * 100);
   };
@@ -149,86 +267,14 @@ export default function LessonsPage() {
       if (msg.includes("Failed to fetch") || msg.includes("NetworkError") || msg.includes("fetch")) {
         setError("Servidor indisponível. Verifique se o backend está em execução.");
       } else {
-        setError(msg || "Não foi possível conectar com o Tutor IA. Tente novamente.");
+        setError(msg || "Não foi possível conectar com a Emanus IA. Tente novamente.");
       }
     } finally {
       setLessonLoading(false);
     }
   };
 
-const renderContent = (raw: string) => {
-    // Clean and parse markdown-like content for display
-    const cleaned = raw
-      .replace(/^#\s*/gm, "")
-      .replace(/[\\*_`~]/g, "")
-      .replace(/\\s{2,}/g, " ")
-      .trim();
-    const lines = cleaned.split('\n');
-    const elements: React.ReactNode[] = [];
-    let buffer: string[] = [];
-    let isOrdered = false;
-    const flushBuffer = () => {
-      if (buffer.length === 0) return;
-      const ListTag = isOrdered ? 'ol' : 'ul';
-      const listClass = isOrdered ? 'list-decimal' : 'list-disc';
-      elements.push(
-        React.createElement(
-          ListTag,
-          { className: `ml-4 ${listClass} mt-1` },
-          buffer.map((item, i) => (
-            <li key={i}>{item}</li>
-          ))
-        )
-      );
-      buffer = [];
-      isOrdered = false;
-    };
-    lines.forEach((line, idx) => {
-      const trimmed = line.trim();
-      if (!trimmed) return;
-      // Ordered list detection (e.g., "1. Item")
-      const orderedMatch = trimmed.match(/^\d+\.\s+(.*)/);
-      const unorderedMatch = trimmed.match(/^[-*]\s+(.*)/);
-      // Heading detection (markdown levels)
-      const headingMatch = trimmed.match(/^(#{1,6})\s+(.*)/);
-      if (orderedMatch) {
-        if (!isOrdered && buffer.length) flushBuffer();
-        isOrdered = true;
-        buffer.push(orderedMatch[1]);
-        return;
-      }
-      if (unorderedMatch) {
-        if (isOrdered && buffer.length) flushBuffer();
-        buffer.push(unorderedMatch[1]);
-        return;
-      }
-      if (headingMatch) {
-        flushBuffer();
-        const level = headingMatch[1].length; // number of # symbols
-        const text = headingMatch[2];
-        const Tag = `h${Math.min(level + 2, 6)}` as "h3" | "h4" | "h5" | "h6"; // map # -> h3, ## -> h4, etc.
-        elements.push(
-          React.createElement(Tag, { className: "mt-4 font-semibold text-text", key: `h-${idx}` }, text)
-        );
-        return;
-      }
-      // Not a list or heading – flush any pending list
-      flushBuffer();
-      // Preserve simple bold/italic by wrapping with <strong>/<em> if needed (basic)
-      let content: React.ReactNode = trimmed;
-      // Bold **text**
-      if (/\*\*(.+)\*\*/.test(trimmed)) {
-        content = trimmed.replace(/\*\*(.+)\*\*/g, (m, p1) => `<strong>${p1}</strong>`);
-        // dangerously set inner HTML later if needed – for simplicity, keep as plain text
-      }
-      elements.push(
-        <p className="mt-2.5 text-text" key={`p-${idx}`}>{content}</p>
-      );
-    });
-    // Flush any remaining list items
-    flushBuffer();
-    return elements;
-  };
+
 
   
 
@@ -240,21 +286,21 @@ const renderContent = (raw: string) => {
     }
     if (!lessonData?.content) return;
 
-    // Clean the lesson content to remove markdown symbols before speaking
-    const cleanedContent = lessonData.content
-      .replace(/^#\s*/gm, "")
-      .replace(/[\\*_`~]/g, "")
-      .replace(/\\s{2,}/g, " ")
-      .trim();
+    // Clean the lesson content to remove markdown and LaTeX symbols before speaking
+    const cleanedContent = cleanTextForTTS(lessonData.content);
     if (!cleanedContent) return;
 
     if (isPlaying) {
       window.speechSynthesis.cancel();
       setIsPlaying(false);
     } else {
-      // Choose a Portuguese voice if available
+      // Choose configured or default Portuguese voice
       const voices = window.speechSynthesis.getVoices();
-      const ptVoice = voices.find(v => /pt[-_]BR|pt[-_]PT/i.test(v.lang)) || null;
+      const savedVoiceURI = typeof window !== "undefined" ? localStorage.getItem("emanus_voice_uri") : null;
+      let ptVoice = savedVoiceURI ? voices.find(v => v.voiceURI === savedVoiceURI) : null;
+      if (!ptVoice) {
+        ptVoice = voices.find(v => /pt[-_]PT/i.test(v.lang)) || voices.find(v => /pt[-_]BR/i.test(v.lang)) || voices.find(v => /pt/i.test(v.lang)) || null;
+      }
       const utterance = new SpeechSynthesisUtterance(cleanedContent);
       utterance.lang = ptVoice?.lang || "pt-PT";
       if (ptVoice) utterance.voice = ptVoice;
@@ -334,16 +380,16 @@ const renderContent = (raw: string) => {
               setActiveTopic(null);
               setLessonData(null);
             }}
-            className="px-4 py-2 border border-muted/20 text-muted hover:text-text rounded-xl transition-colors cursor-pointer text-xs"
+            className="px-4 py-2 border border-muted/20 text-muted hover:text-text rounded-xl transition-colors cursor-pointer text-xs flex items-center gap-1.5"
           >
-            ← Voltar aos Tópicos
+            <ArrowLeft className="w-3.5 h-3.5" /> Voltar aos Tópicos
           </button>
         </header>
 
         {lessonLoading && (
           <div className="py-20 text-center flex flex-col items-center justify-center animate-pulse">
             <svg className="animate-spin h-10 w-10 text-primary mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-            <h3 className="font-bold text-text">Gerar Conteúdo com o Tutor IA...</h3>
+            <h3 className="font-bold text-text">Gerar Conteúdo com a Emanus IA...</h3>
             <p className="text-xs text-muted mt-2 max-w-xs">A IA está a consultar o plano oficial do MINED para estruturar a aula e o exercício de validação.</p>
           </div>
         )}
@@ -384,8 +430,8 @@ const renderContent = (raw: string) => {
                   )}
                 </button>
               </div>
-              {/* Render cleaned and structured content */}
-              {lessonData && renderContent(lessonData.content)}
+              {/* Render structured content using shared markdown renderer */}
+              {lessonData && renderMessageContent(lessonData.content)}
             </article>
 
             {/* Exercício de Fixação */}
@@ -417,8 +463,8 @@ const renderContent = (raw: string) => {
                       className={`w-full p-4 rounded-xl border text-left text-xs transition-all flex items-center justify-between cursor-pointer ${btnStyle}`}
                     >
                       <span>{opt}</span>
-                      {isAnswered && isCorrectAnswer && <span className="text-primary font-extrabold text-[10px] uppercase">✓ Correto</span>}
-                      {isAnswered && isSelected && !isCorrectAnswer && <span className="text-danger font-extrabold text-[10px] uppercase">✗ Errado</span>}
+                      {isAnswered && isCorrectAnswer && <span className="text-primary font-extrabold text-[10px] uppercase flex items-center gap-1"><Check className="w-3.5 h-3.5" /> Correto</span>}
+                      {isAnswered && isSelected && !isCorrectAnswer && <span className="text-danger font-extrabold text-[10px] uppercase flex items-center gap-1"><X className="w-3.5 h-3.5" /> Errado</span>}
                     </button>
                   );
                 })}
@@ -462,24 +508,152 @@ const renderContent = (raw: string) => {
     );
   }
 
-  // 2. TOPICS LIST VIEW
+  // 2. TOPICS LIST VIEW / PROGRAM EDITOR
   if (selectedSubject) {
     const topics = getTopicsForSubject(selectedSubject);
     const progress = getSubjectProgress(selectedSubject);
+    const hasProgram = topics.length > 0;
+
+    if (!hasProgram || isEditingProgram) {
+      return (
+        <div className="p-4 sm:p-8 pb-20 max-w-xl mx-auto w-full min-h-screen bg-dark">
+          <header className="mb-6 sm:mb-8 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-muted/15 pb-4">
+            <div>
+              <h1 className="text-xl sm:text-2xl font-bold text-text">{selectedSubject}</h1>
+              <p className="text-xs text-muted mt-1">Inserir Programa Trimestral</p>
+            </div>
+            <button 
+              onClick={() => {
+                setIsEditingProgram(false);
+                setSelectedSubject(null);
+              }}
+              className="px-4 py-2 border border-muted/20 text-muted hover:text-text rounded-xl transition-colors cursor-pointer text-xs flex items-center gap-1.5"
+            >
+              <ArrowLeft className="w-3.5 h-3.5" /> Voltar às Disciplinas
+            </button>
+          </header>
+
+          <div className="p-6 rounded-2xl border border-surface bg-surface flex gap-4 mb-6">
+            <div className="h-12 w-12 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center flex-shrink-0 relative">
+              <img src="/venus-logo.svg" alt="Emanus IA" className="h-7 w-7 animate-pulse" />
+            </div>
+            <div>
+              <h3 className="font-extrabold text-xs text-text flex items-center gap-1">
+                <span>Emanus IA</span>
+                <span className="text-[9px] text-primary bg-primary/10 px-1.5 py-0.5 rounded font-bold uppercase">Tutor</span>
+              </h3>
+              <p className="text-xs text-muted mt-1 leading-relaxed">
+                Insere o teu programa trimestral de <strong>{selectedSubject}</strong>. Escreve os temas e tópicos que queres aprender (um por linha) para que eu possa gerar as tuas aulas.
+              </p>
+            </div>
+          </div>
+
+          {invalidTopics.length > 0 && (
+            <div className="mb-6 p-5 rounded-xl border border-danger/30 bg-danger/5 text-xs text-text flex gap-3 animate-slide-up">
+              <div className="h-8 w-8 rounded-full bg-danger/10 border border-danger/20 flex items-center justify-center flex-shrink-0 text-danger font-bold">!</div>
+              <div>
+                <h4 className="font-bold text-danger">Temas Inválidos Detetados</h4>
+                <p className="text-muted mt-1 leading-relaxed">
+                  Os seguintes temas não constam no currículo oficial do MINED: <strong className="text-danger">{invalidTopics.join(", ")}</strong>. Por favor, corrige ou remove estes temas para que eu possa gerar as tuas aulas.
+                </p>
+              </div>
+            </div>
+          )}
+
+          <div className="space-y-4">
+            <textarea
+              value={programInput}
+              onChange={(e) => setProgramInput(e.target.value)}
+              placeholder={
+                selectedSubject && CURRICULUM[selectedSubject]
+                  ? `Exemplo:\n${CURRICULUM[selectedSubject].slice(0, 3).join("\n")}`
+                  : "Exemplo:\nTrigonometria\nLimites e Sucessões\nCálculo de Derivadas"
+              }
+              rows={8}
+              className="w-full p-4 rounded-xl border border-muted/20 bg-dark/50 text-text text-sm focus:outline-none focus:border-primary/50 placeholder:text-muted/40 font-mono resize-y"
+            />
+            
+            {/* Searchable suggestions from MINED curriculum */}
+            {officialCurriculum.length > 0 && (
+              <div className="rounded-xl border border-surface bg-surface/50 p-4">
+                <div className="flex justify-between items-center mb-3">
+                  <span className="text-xs font-bold text-text">Sugestões do Programa do MINED</span>
+                  <span className="text-[10px] text-muted">Clica para adicionar ao teu programa</span>
+                </div>
+                <input
+                  type="text"
+                  value={curriculumSearch}
+                  onChange={(e) => setCurriculumSearch(e.target.value)}
+                  placeholder="Pesquisar tópicos oficiais..."
+                  className="w-full p-2.5 rounded-lg border border-muted/10 bg-dark/20 text-xs text-text focus:outline-none focus:border-primary/30 placeholder:text-muted/40 mb-3"
+                />
+                <div className="flex flex-wrap gap-2 max-h-36 overflow-y-auto p-1 scrollbar-thin">
+                  {officialCurriculum
+                    .filter(t => t.toLowerCase().includes(curriculumSearch.toLowerCase()))
+                    .map((topic, index) => (
+                      <button
+                        key={index}
+                        onClick={() => {
+                          const trimmedInput = programInput.trim();
+                          const newLines = trimmedInput ? `${trimmedInput}\n${topic}` : topic;
+                          setProgramInput(newLines);
+                        }}
+                        className="px-2.5 py-1.5 bg-dark/40 hover:bg-primary/20 hover:text-primary border border-muted/5 hover:border-primary/20 rounded-lg text-[10px] text-muted transition-all cursor-pointer"
+                      >
+                        + {topic}
+                      </button>
+                    ))}
+                </div>
+              </div>
+            )}
+
+            {error && !invalidTopics.length && (
+              <p className="text-xs text-danger font-semibold bg-danger/10 border border-danger/20 p-3 rounded-lg">{error}</p>
+            )}
+
+            <div className="flex gap-3">
+              <button
+                onClick={handleSaveProgram}
+                disabled={savingProgram}
+                className="flex-1 py-4 bg-primary text-dark font-extrabold rounded-xl hover:opacity-90 transition-opacity cursor-pointer text-sm shadow-md"
+              >
+                {savingProgram ? "A guardar..." : "Guardar Programa Trimestral"}
+              </button>
+              {hasProgram && (
+                <button
+                  onClick={() => setIsEditingProgram(false)}
+                  className="px-6 py-4 border border-muted/20 text-muted hover:text-text font-bold rounded-xl transition-all cursor-pointer text-xs"
+                >
+                  Cancelar
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      );
+    }
 
     return (
-      <div className="p-8 pb-20 max-w-xl mx-auto w-full min-h-screen bg-dark">
-        <header className="mb-8 flex items-center justify-between border-b border-muted/15 pb-4">
+      <div className="p-4 sm:p-8 pb-20 max-w-xl mx-auto w-full min-h-screen bg-dark">
+        <header className="mb-6 sm:mb-8 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-muted/15 pb-4">
           <div>
-            <h1 className="text-2xl font-bold text-text">{selectedSubject}</h1>
-            <p className="text-xs text-muted mt-1">Plano Curricular Oficial ({profile?.classe || '12.ª Classe'})</p>
+            <h1 className="text-xl sm:text-2xl font-bold text-text">{selectedSubject}</h1>
+            <p className="text-xs text-muted mt-1">Programa Trimestral ({profile?.classe || '12.ª Classe'})</p>
           </div>
-          <button 
-            onClick={() => setSelectedSubject(null)}
-            className="px-4 py-2 border border-muted/20 text-muted hover:text-text rounded-xl transition-colors cursor-pointer text-xs"
-          >
-            ← Mudar Disciplina
-          </button>
+          <div className="flex gap-2">
+            <button 
+              onClick={() => setIsEditingProgram(true)}
+              className="px-3 py-2 border border-primary/20 text-primary hover:bg-primary/10 rounded-xl transition-colors cursor-pointer text-xs font-semibold"
+            >
+              Editar Programa
+            </button>
+            <button 
+              onClick={() => setSelectedSubject(null)}
+              className="px-4 py-2 border border-muted/20 text-muted hover:text-text rounded-xl transition-colors cursor-pointer text-xs flex items-center gap-1.5"
+            >
+              <ArrowLeft className="w-3.5 h-3.5" /> Mudar Disciplina
+            </button>
+          </div>
         </header>
 
         <div className="rounded-2xl bg-surface border border-surface p-6 mb-8">
@@ -502,8 +676,14 @@ const renderContent = (raw: string) => {
               >
                 <div>
                   <h4 className="font-semibold text-text text-sm">{topic}</h4>
-                  <span className={`inline-block text-[10px] mt-1.5 px-2 py-0.5 rounded font-bold uppercase ${completed ? 'bg-primary/10 text-primary' : 'bg-muted/10 text-muted'}`}>
-                    {completed ? "✔ Concluído (+30 XP)" : "Pendente"}
+                  <span className={`inline-flex items-center gap-1 text-[10px] mt-1.5 px-2 py-0.5 rounded font-bold uppercase ${completed ? 'bg-primary/10 text-primary' : 'bg-muted/10 text-muted'}`}>
+                    {completed ? (
+                      <>
+                        <Check className="w-3 h-3" /> Concluído (+30 XP)
+                      </>
+                    ) : (
+                      "Pendente"
+                    )}
                   </span>
                 </div>
                 <button
@@ -521,18 +701,39 @@ const renderContent = (raw: string) => {
   }
 
   // 3. SUBJECT CARDS GRID (INITIAL SCREEN)
+  const hasAnyProgram = Object.values(programs).some(topics => topics && topics.length > 0);
+
   return (
-    <div className="p-8 pb-20">
-      <header className="mb-8">
-        <h1 className="text-3xl font-bold text-text">Aulas e Conteúdos</h1>
-        <p className="mt-2 text-muted">Acede ao currículo oficial do Ministério da Educação de Angola ({profile?.classe || '12.ª Classe'}).</p>
+    <div className="p-4 sm:p-8 pb-20">
+      <header className="mb-6 sm:mb-8 border-b border-surface/40 sm:border-0 pb-4 sm:pb-0">
+        <h1 className="text-2xl sm:text-3xl font-bold text-text">Aulas e Conteúdos</h1>
+        <p className="mt-1 sm:mt-2 text-xs sm:text-sm text-muted">Acede ao currículo das tuas disciplinas.</p>
       </header>
+
+      {!programsLoading && !hasAnyProgram && (
+        <div className="mb-8 p-6 rounded-2xl border border-warning/30 bg-warning/5 backdrop-blur-md flex flex-col md:flex-row items-center gap-4 animate-slide-up">
+          <div className="h-16 w-16 rounded-full bg-primary/20 border border-primary/40 flex items-center justify-center flex-shrink-0 relative">
+            <img src="/venus-logo.svg" alt="Emanus IA" className="h-10 w-10 animate-pulse" />
+            <span className="absolute -bottom-1 -right-1 bg-warning text-dark text-[9px] font-black px-1 rounded uppercase">Aviso</span>
+          </div>
+          <div>
+            <h3 className="font-extrabold text-sm text-text flex items-center gap-1.5">
+              <span className="text-primary">Emanus IA</span>
+              <span className="text-[10px] text-muted font-normal bg-white/5 px-2 py-0.5 rounded">Tutora Virtual</span>
+            </h3>
+            <p className="text-xs text-muted mt-1 leading-relaxed">
+              Olá! Como a tua tutora virtual, informo que <strong className="text-warning">é impossível gerar aula por falta de programa trimestral escolar</strong>. Por favor, escolhe uma das disciplinas abaixo e insere o teu programa trimestral de tópicos para começarmos a estudar!
+            </p>
+          </div>
+        </div>
+      )}
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         {dynamicSubjects.map((sub: string, i: number) => {
           const color = baseColors[i % baseColors.length];
           const topics = getTopicsForSubject(sub);
           const progress = getSubjectProgress(sub);
+          const hasProgram = topics.length > 0;
 
           return (
             <div 
@@ -552,19 +753,21 @@ const renderContent = (raw: string) => {
                 <div className="p-5">
                   <h3 className="text-lg font-bold text-text group-hover:text-primary transition-colors">{sub}</h3>
                   <p className="text-xs text-muted mt-1">Aulas estruturadas sobre o currículo de Angola.</p>
-                  <p className="text-[11px] text-muted mt-3 font-semibold">{topics.length} Tópicos oficiais</p>
+                  <p className="text-[11px] text-muted mt-3 font-semibold">
+                    {hasProgram ? `${topics.length} Tópicos inseridos` : "Sem programa trimestral escolar"}
+                  </p>
                 </div>
               </div>
               <div className="p-5 pt-0 border-t border-muted/5 mt-4">
                 <div className="space-y-2 mt-4">
                   <div className="flex justify-between text-[11px] text-muted">
-                    <span>Progresso Curricular</span>
-                    <span className="font-bold text-text">{progress}%</span>
+                    <span>{hasProgram ? "Progresso Curricular" : "Programa Trimestral"}</span>
+                    <span className="font-bold text-text">{hasProgram ? `${progress}%` : "Pendente"}</span>
                   </div>
                   <div className="h-2 w-full bg-dark rounded-full overflow-hidden">
                     <div 
-                      className={`h-full ${color}`} 
-                      style={{ width: `${progress}%` }}
+                      className={`h-full ${hasProgram ? color : 'bg-muted/20'}`} 
+                      style={{ width: `${hasProgram ? progress : 0}%` }}
                     />
                   </div>
                 </div>

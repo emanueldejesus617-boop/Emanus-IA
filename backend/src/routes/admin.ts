@@ -1,11 +1,8 @@
 import { FastifyInstance } from "fastify";
-import { db } from "../db/db";
-import * as schema from "../db/schema";
-import { eq, desc, not } from "drizzle-orm";
+import { firestore } from "../db/db";
 import { authenticateUser } from "./auth";
 
 export async function adminRoutes(fastify: FastifyInstance) {
-  // Middleware helper to authorize admin role
   async function authorizeAdmin(request: any, reply: any) {
     const decoded = await authenticateUser(request, reply);
     if (!decoded) return null;
@@ -23,22 +20,20 @@ export async function adminRoutes(fastify: FastifyInstance) {
     if (!admin) return;
 
     try {
-      // 1. Total users
-      const allUsers = await db.select().from(schema.users);
-      const totalStudents = allUsers.filter(u => u.role === "student").length;
-
-      // 2. Average XP (students)
+      const usersSnapshot = await firestore.collection("users").get();
+      const allUsers = usersSnapshot.docs.map(doc => doc.data() as any);
+      
       const students = allUsers.filter(u => u.role === "student");
+      const totalStudents = students.length;
+
       const totalXp = students.reduce((acc, curr) => acc + (curr.xp || 0), 0);
       const averageXp = students.length > 0 ? Math.round(totalXp / students.length) : 0;
 
-      // 3. Simulated exams done
-      const allExams = await db.select().from(schema.examResults);
-      const totalExams = allExams.length;
+      const examsSnapshot = await firestore.collection("exam_results").get();
+      const totalExams = examsSnapshot.size;
 
-      // 4. Completed study topics
-      const allCompletedTopics = await db.select().from(schema.userCompletedTopics);
-      const totalCompletedTopics = allCompletedTopics.length;
+      const completedTopicsSnapshot = await firestore.collection("user_completed_topics").get();
+      const totalCompletedTopics = completedTopicsSnapshot.size;
 
       return {
         totalStudents,
@@ -46,7 +41,7 @@ export async function adminRoutes(fastify: FastifyInstance) {
         totalExams,
         totalCompletedTopics
       };
-    } catch (e) {
+    } catch (e: any) {
       fastify.log.error(e);
       return reply.status(500).send({ error: "Erro ao carregar estatísticas do admin" });
     }
@@ -58,24 +53,30 @@ export async function adminRoutes(fastify: FastifyInstance) {
     if (!admin) return;
 
     try {
-      const students = await db
-        .select({
-          id: schema.users.id,
-          name: schema.users.name,
-          email: schema.users.email,
-          classe: schema.users.classe,
-          curso: schema.users.curso,
-          xp: schema.users.xp,
-          streak: schema.users.streak,
-          createdAt: schema.users.createdAt,
-          lastLoginAt: schema.users.lastLoginAt
-        })
-        .from(schema.users)
-        .where(eq(schema.users.role, "student"))
-        .orderBy(desc(schema.users.xp));
+      const snapshot = await firestore
+        .collection("users")
+        .where("role", "==", "student")
+        .get();
+
+      const students = snapshot.docs.map(doc => {
+        const u = doc.data() as any;
+        return {
+          id: doc.id,
+          name: u.name,
+          email: u.email,
+          classe: u.classe,
+          curso: u.curso,
+          xp: u.xp || 0,
+          streak: u.streak || 0,
+          createdAt: u.createdAt,
+          lastLoginAt: u.lastLoginAt
+        };
+      });
+
+      students.sort((a, b) => (b.xp || 0) - (a.xp || 0));
 
       return students;
-    } catch (e) {
+    } catch (e: any) {
       fastify.log.error(e);
       return reply.status(500).send({ error: "Erro ao obter lista de utilizadores" });
     }

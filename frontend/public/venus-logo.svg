@@ -1,0 +1,88 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 340" fill="none">
+  <defs>
+    <!-- Gradiente principal da letra E: azul royal → verde esmeralda -->
+    <linearGradient id="eGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#00359C"/>
+      <stop offset="45%" stop-color="#0052C3"/>
+      <stop offset="100%" stop-color="#00C896"/>
+    </linearGradient>
+
+    <!-- Gradiente da órbita e detalhes -->
+    <linearGradient id="orbitGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0052C3"/>
+      <stop offset="60%" stop-color="#00C896"/>
+      <stop offset="100%" stop-color="#00E5AA"/>
+    </linearGradient>
+  </defs>
+
+  <!-- ═══════════════════════════════════════════
+       LETRA  E  ESTILIZADA
+  ════════════════════════════════════════════ -->
+  <path
+    d="M 255 40
+       C 266 40 275 49 275 60
+       L 275 62
+       C 275 73 266 82 255 82
+       L 175 82
+       C 142 82 130 98 130 125
+       L 130 135
+       L 230 135
+       C 241 135 250 144 250 155
+       C 250 166 241 175 230 175
+       L 130 175
+       L 130 195
+       C 130 222 142 238 175 238
+       L 245 238
+       C 256 238 265 247 265 258
+       C 265 269 256 278 245 278
+       L 170 278
+       C 105 278 72 245 72 185
+       L 72 135
+       C 72 75 105 40 170 40
+       Z"
+    fill="url(#eGrad)"
+  />
+
+  <!-- ═══════════════════════════════════════════
+       PLANETA  IA  (CÍRCULO + ÓRBITA + SPARKLE)
+  ════════════════════════════════════════════ -->
+  <!-- Círculo interior IA -->
+  <circle
+    cx="255" cy="180" r="44"
+    stroke="url(#orbitGrad)"
+    stroke-width="7"
+    fill="none"
+  />
+
+  <!-- Texto "IA" -->
+  <text
+    x="255" y="192"
+    text-anchor="middle"
+    font-family="'Inter', 'Arial', sans-serif"
+    font-weight="800"
+    font-size="32"
+    fill="#00A884"
+    letter-spacing="0.5"
+  >IA</text>
+
+  <!-- Órbita elíptica inclinada -->
+  <path
+    d="M 195 230
+       C 195 188 315 142 315 180
+       C 315 218 195 260 195 230 Z"
+    stroke="url(#orbitGrad)"
+    stroke-width="6"
+    fill="none"
+    stroke-linecap="round"
+  />
+
+  <!-- Sparkle / Estrela de 4 pontas -->
+  <path
+    d="M 295 90
+       C 295 100 298 105 308 105
+       C 298 105 295 110 295 120
+       C 295 110 292 105 282 105
+       C 292 105 295 100 295 90 Z"
+    fill="#00C896"
+  />
+</svg>

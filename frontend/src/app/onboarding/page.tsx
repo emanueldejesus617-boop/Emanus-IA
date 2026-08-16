@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { GraduationCap } from "lucide-react";
+import { parseJsonResponse } from "@/lib/utils";
 
 const CURSOS = [
   // Cursos do Ensino Geral
@@ -92,7 +94,7 @@ export default function OnboardingPage() {
         body: JSON.stringify({ classe, curso, subjects })
       });
 
-      const data = await res.json();
+      const data = await parseJsonResponse(res);
       if (!res.ok) {
         throw new Error(data.error || "Erro ao salvar perfil");
       }
@@ -114,13 +116,13 @@ export default function OnboardingPage() {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-dark p-4">
-      <div className="w-full max-w-md rounded-2xl bg-surface p-8 shadow-2xl border border-muted/20">
+      <div className="w-full max-w-md rounded-2xl bg-surface p-5 sm:p-8 shadow-2xl border border-muted/20">
         <div className="mb-8 text-center">
           <div className="inline-flex h-16 w-16 items-center justify-center rounded-full bg-primary/20 text-primary mb-4">
-            <span className="text-3xl">🎓</span>
+            <GraduationCap className="w-8 h-8 text-primary" />
           </div>
           <h1 className="text-2xl font-bold text-text">Cria o teu Perfil</h1>
-          <p className="mt-2 text-muted">Para personalizar as tuas aulas e o Tutor IA, diz-nos qual é a tua classe.</p>
+          <p className="mt-2 text-muted">Para personalizar as tuas aulas e a Emanus IA, diz-nos qual é a tua classe.</p>
         </div>
 
         {error && (
@@ -141,7 +143,7 @@ export default function OnboardingPage() {
               disabled={isLoading}
               className="w-full rounded-lg border border-muted/20 bg-dark p-3 text-text outline-none focus:border-primary focus:ring-1 focus:ring-primary appearance-none"
             >
-              <option value="">Seleccione a classe...</option>
+              <option value="">Selecione a classe...</option>
               {CLASSES.map(c => (
                 <option key={c} value={c}>{c}</option>
               ))}
@@ -157,7 +159,7 @@ export default function OnboardingPage() {
                 disabled={isLoading}
                 className="w-full rounded-lg border border-muted/20 bg-dark p-3 text-text outline-none focus:border-primary focus:ring-1 focus:ring-primary appearance-none"
               >
-                <option value="">Seleccione o curso...</option>
+                <option value="">Selecione o curso...</option>
                 {CURSOS.map(c => (
                   <option key={c} value={c}>{c}</option>
                 ))}

@@ -1,0 +1,106 @@
+# Plano de Migração do Supabase para Firebase (Firestore + Google Auth)
+
+## Visão Geral
+
+O objetivo deste plano é migrar a infraestrutura de dados e autenticação da plataforma **Emanus IA / Tutor IA** do **Supabase (PostgreSQL)** para o **Firebase**:
+
+1. **Firebase Authentication**:
+   - Autenticação por **Google Sign-In** (com contas Google reais via popup/redirect).
+   - Autenticação por **E-mail e Palavra-passe** tradicional.
+   - Verificação segura dos ID Tokens no backend Fastify com `firebase-admin`.
+2. **Firebase Firestore**:
+   - Substituição do PostgreSQL/Drizzle pelo NoSQL Firestore.
+   - Elimina o problema de servidores de base de dados pausados no plano gratuito.
+   - Desempenho rápido, escalabilidade ilimitada e tempo real.
+
+---
+
+## User Review Required
+
+> [!IMPORTANT]
+> **Configuração das Chaves do Firebase:**
+> Para ativar a integração completa com o seu projeto Firebase, precisará das credenciais do Firebase Console:
+> 1. Aceda a [Firebase Console](https://console.firebase.google.com/).
+> 2. Crie um projeto (ou selecione um projeto existente).
+> 3. Na secção **Authentication**, ative os métodos **Email/Password** e **Google**.
+> 4. Na secção **Firestore Database**, crie a base de dados em modo de produção/teste.
+> 5. Adicione uma aplicação Web e copie as chaves de configuração (`apiKey`, `authDomain`, `projectId`, etc.).
+>
+> *Nota: Implementaremos um modo de fallback/desenvolvimento seguro caso as chaves ainda não estejam preenchidas no `.env`, para que a aplicação continue a funcionar sem crashes.*
+
+---
+
+## Proposed Changes
+
+### Componente 1: Frontend (Next.js)
+
+#### [NEW] [frontend/src/lib/firebase.ts](file:///c:/Users/poiuj/Desktop/EMAIT/frontend/src/lib/firebase.ts)
+- Configuração e inicialização do Firebase App SDK.
+- Exportação das instâncias de `auth` (`getAuth()`) e `googleProvider` (`new GoogleAuthProvider()`).
+
+#### [MODIFY] [frontend/src/app/page.tsx](file:///c:/Users/poiuj/Desktop/EMAIT/frontend/src/app/page.tsx)
+- Adicionar o botão **"Continuar com o Google"** com o logótipo vetorial oficial da Google e animação de hover/press.
+- Integrar a autenticação por Google (`signInWithPopup(auth, googleProvider)`).
+- Integrar a autenticação por E-mail/Password com Firebase Auth (`signInWithEmailAndPassword` e `createUserWithEmailAndPassword`).
+- Guardar o `idToken` do Firebase e o perfil do utilizador para enviar nos cabeçalhos HTTP `Authorization: Bearer <idToken>`.
+
+#### [MODIFY] [frontend/.env](file:///c:/Users/poiuj/Desktop/EMAIT/frontend/.env) & [.env](file:///c:/Users/poiuj/Desktop/EMAIT/.env)
+- Adicionar variáveis de ambiente do Firebase:
+  - `NEXT_PUBLIC_FIREBASE_API_KEY`
+  - `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN`
+  - `NEXT_PUBLIC_FIREBASE_PROJECT_ID`
+  - `NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET`
+  - `NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID`
+  - `NEXT_PUBLIC_FIREBASE_APP_ID`
+
+---
+
+### Componente 2: Backend (Fastify & Firestore)
+
+#### [MODIFY] [backend/package.json](file:///c:/Users/poiuj/Desktop/EMAIT/backend/package.json)
+- Instalar a dependência `firebase-admin`.
+- (Opcional) Manter ou remover dependências antigas do PostgreSQL (`postgres`, `drizzle-orm`).
+
+#### [MODIFY] [backend/src/db/db.ts](file:///c:/Users/poiuj/Desktop/EMAIT/backend/src/db/db.ts)
+- Substituir a inicialização do `drizzle-orm/postgres-js` por `firebase-admin`.
+- Exportar a instância da base de dados Firestore `db = admin.firestore()` e `auth = admin.auth()`.
+- Criar funções utilitárias auxiliares para manipulação flexível de coleções Firestore (`users`, `conversations`, `messages`, `study_plans`, `exam_results`, `appointments`, etc.).
+
+#### [MODIFY] [backend/src/routes/auth.ts](file:///c:/Users/poiuj/Desktop/EMAIT/backend/src/routes/auth.ts)
+- Atualizar a função `authenticateUser` para verificar o ID Token do Firebase via `admin.auth().verifyIdToken(token)`.
+- Atualizar a rota `/login`, `/register`, `/me` e `/profile` para ler e salvar perfis de estudantes na coleção `users` do Firestore.
+- Sincronizar automaticamente utilizadores autenticados via Google no seu primeiro login (criação automática do documento do utilizador no Firestore com `xp: 0, streak: 1`).
+
+#### [MODIFY] [backend/src/routes/conversations.ts](file:///c:/Users/poiuj/Desktop/EMAIT/backend/src/routes/conversations.ts) & [ai.ts](file:///c:/Users/poiuj/Desktop/EMAIT/backend/src/routes/ai.ts)
+- Migrar consultas de mensagens e conversas do Drizzle/Postgres para coleções Firestore (`conversations` e `messages`).
+
+#### [MODIFY] [backend/src/routes/exams.ts](file:///c:/Users/poiuj/Desktop/EMAIT/backend/src/routes/exams.ts)
+- Migrar armazenamento de resultados de simulados para a coleção `exam_results` do Firestore.
+
+#### [MODIFY] [backend/src/routes/schedule.ts](file:///c:/Users/poiuj/Desktop/EMAIT/backend/src/routes/schedule.ts)
+- Migrar horários inteligentes para a coleção `study_plans` do Firestore.
+
+#### [MODIFY] [backend/src/routes/appointments.ts](file:///c:/Users/poiuj/Desktop/EMAIT/backend/src/routes/appointments.ts)
+- Migrar agendamento de explicações para a coleção `appointments` e `tutor_availabilities` do Firestore.
+
+#### [MODIFY] [backend/src/routes/admin.ts](file:///c:/Users/poiuj/Desktop/EMAIT/backend/src/routes/admin.ts)
+- Migrar métricas de administração para contagens no Firestore.
+
+---
+
+## Verification Plan
+
+### Automated & Unit Tests
+1. **Teste de Pacotes**:
+   - Verificar a instalação limpa das bibliotecas `firebase` no frontend e `firebase-admin` no backend.
+2. **Teste de Verificação de Token**:
+   - Testar o middleware `authenticateUser` com tokens de teste/produção do Firebase.
+
+### Manual Verification
+1. **Login com Google**:
+   - Clicar no novo botão **"Continuar com o Google"** na página inicial.
+   - Confirmar a abertura do popup da Google, seleção da conta e criação automática do perfil no Firestore.
+2. **Login com Email/Palavra-passe**:
+   - Testar o registo e login tradicionais com credenciais normais no Firebase Auth.
+3. **Persistência de Dados no Firestore**:
+   - Aceder ao `/dashboard`, gerar uma aula, simulado ou horário, e verificar no Firebase Console se os dados foram salvos corretamente.
