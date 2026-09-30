@@ -3,14 +3,15 @@ import {
   getAuth, 
   initializeAuth, 
   browserLocalPersistence, 
+  indexedDBLocalPersistence, 
   browserPopupRedirectResolver, 
   GoogleAuthProvider, 
   Auth 
 } from "firebase/auth";
 
-// Firebase configuration from environment variables
+// Firebase configuration from environment variables with valid fallback
 const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || "AIzaSyDummyKeyForDevModePlaceholder",
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || "AIzaSyCUOk7aJ8nzvftZHcQeqVIfOLaBH8_mLDs",
   authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN || "emanus-ia.firebaseapp.com",
   projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || "emanus-ia",
   storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || "emanus-ia.firebasestorage.app",
@@ -22,11 +23,10 @@ const firebaseConfig = {
 const app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
 
 let authInstance: Auth;
-
 if (typeof window !== "undefined") {
   try {
     authInstance = initializeAuth(app, {
-      persistence: browserLocalPersistence,
+      persistence: [indexedDBLocalPersistence, browserLocalPersistence],
       popupRedirectResolver: browserPopupRedirectResolver,
     });
   } catch {
@@ -45,7 +45,3 @@ googleProvider.setCustomParameters({
 });
 
 export default app;
-
-
-
-

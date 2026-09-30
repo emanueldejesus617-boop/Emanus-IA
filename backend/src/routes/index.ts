@@ -7,6 +7,7 @@ import { examsRoutes } from "./exams";
 import { lessonsRoutes } from "./lessons";
 import { adminRoutes } from "./admin";
 import { appointmentsRoutes } from "./appointments";
+import { infoRoutes } from "./info";
 
 export function setupRoutes(fastify: FastifyInstance) {
   fastify.register(authRoutes, { prefix: "/api/auth" });
@@ -17,4 +18,5 @@ export function setupRoutes(fastify: FastifyInstance) {
   fastify.register(lessonsRoutes, { prefix: "/api/lessons" });
   fastify.register(adminRoutes, { prefix: "/api/admin" });
   fastify.register(appointmentsRoutes, { prefix: "/api/appointments" });
+  fastify.register(infoRoutes, { prefix: "/api/info" });
 }

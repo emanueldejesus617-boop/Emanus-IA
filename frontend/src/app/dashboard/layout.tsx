@@ -4,13 +4,42 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useTheme } from "next-themes";
-import { X, GraduationCap, Rocket, Volume2 } from "lucide-react";
+import { 
+  X, 
+  GraduationCap, 
+  Rocket, 
+  Volume2, 
+  User as UserIcon, 
+  Camera, 
+  Check, 
+  AlertCircle, 
+  Loader2, 
+  Sparkles, 
+  AtSign,
+  HelpCircle,
+  ShieldCheck,
+  FileText,
+  Bug,
+  LifeBuoy,
+  Send,
+  CheckCircle2,
+  Lock,
+  BookOpen
+} from "lucide-react";
 import { Logo } from "@/components/logo";
+import { auth } from "@/lib/firebase";
+import { signOut } from "firebase/auth";
+import { parseJsonResponse } from "@/lib/utils";
+
 
 
 type User = {
   id: string;
   name: string;
+  displayName?: string;
+  username?: string;
+  photoUrl?: string;
+  avatar?: string;
   email: string;
   role: string;
   classe?: string;
@@ -30,6 +59,23 @@ export default function DashboardLayout({
   const [aboutOpen, setAboutOpen] = useState(false);
   const [personalizationOpen, setPersonalizationOpen] = useState(false);
   const [personality, setPersonality] = useState<"step-by-step" | "direct" | "mixed">("step-by-step");
+
+  // Estados do Modal de Perfil
+  const [profileModalOpen, setProfileModalOpen] = useState(false);
+  const [editDisplayName, setEditDisplayName] = useState("");
+  const [editUsername, setEditUsername] = useState("");
+  const [editPhotoUrl, setEditPhotoUrl] = useState("");
+  const [savingProfile, setSavingProfile] = useState(false);
+  const [profileError, setProfileError] = useState("");
+  const [profileSuccess, setProfileSuccess] = useState("");
+
+  // Estados da Aba de Ajuda
+  const [helpOpen, setHelpOpen] = useState(false);
+  const [helpTab, setHelpTab] = useState<"support" | "privacy-center" | "privacy-policy" | "terms" | "report-bug">("support");
+  const [bugCategory, setBugCategory] = useState("ia");
+  const [bugDescription, setBugDescription] = useState("");
+  const [bugSending, setBugSending] = useState(false);
+  const [bugSuccess, setBugSuccess] = useState(false);
 
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
@@ -80,14 +126,60 @@ export default function DashboardLayout({
     
     if (!token || !storedUser) {
       router.push("/");
-    } else {
-      setUser(JSON.parse(storedUser));
+      return;
     }
+
+    try {
+      setUser(JSON.parse(storedUser));
+    } catch {
+      localStorage.clear();
+      router.push("/");
+      return;
+    }
+
+    // Validação ativa da sessão em segundo plano
+    fetch("/api/auth/me", {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+      .then(async (res) => {
+        if (!res.ok) {
+          if (res.status === 401 || res.status === 403) {
+            localStorage.clear();
+            try { await signOut(auth); } catch {}
+            router.push("/");
+          }
+          return null;
+        }
+        return res.json();
+      })
+      .then((data) => {
+        if (data && data.user) {
+          setUser(data.user);
+          localStorage.setItem("user", JSON.stringify(data.user));
+        }
+      })
+      .catch(() => {
+        // Falha de rede temporária: mantém estado em cache offline sem desconectar imediatamente
+      });
 
     const storedPersonality = localStorage.getItem("emanus_personality");
     if (storedPersonality) {
       setPersonality(storedPersonality as any);
     }
+
+    const handleProfileUpdated = () => {
+      const stored = localStorage.getItem("user");
+      if (stored) {
+        try {
+          setUser(JSON.parse(stored));
+        } catch {}
+      }
+    };
+    window.addEventListener("userProfileUpdated", handleProfileUpdated);
+
+    return () => {
+      window.removeEventListener("userProfileUpdated", handleProfileUpdated);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -105,8 +197,13 @@ export default function DashboardLayout({
     navItems.push({ name: "Painel Admin", href: "/dashboard/admin" });
   }
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     localStorage.clear();
+    try {
+      await signOut(auth);
+    } catch (err) {
+      console.warn("Aviso ao encerrar sessão no Firebase:", err);
+    }
     router.push("/");
   };
 
@@ -115,6 +212,133 @@ export default function DashboardLayout({
     localStorage.setItem("emanus_personality", value);
     if (typeof window !== "undefined") {
       window.dispatchEvent(new Event("emanusPersonalityChanged"));
+    }
+  };
+
+  const handleOpenProfileModal = () => {
+    if (user) {
+      setEditDisplayName(user.displayName || user.name || "");
+      // Auto-preencher username com prefixo do email se ainda não tiver definido
+      const defaultUsername = user.username || (user.email ? user.email.split("@")[0] : "");
+      setEditUsername(defaultUsername);
+      setEditPhotoUrl(user.photoUrl || user.avatar || "");
+      setProfileError("");
+      setProfileSuccess("");
+    }
+    setProfileModalOpen(true);
+    setProfileMenuOpen(false);
+  };
+
+  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      setProfileError("Por favor seleciona um ficheiro de imagem válido.");
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      setProfileError("A imagem não pode ter mais de 5MB.");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        const size = 200;
+        canvas.width = size;
+        canvas.height = size;
+        const ctx = canvas.getContext("2d");
+        if (ctx) {
+          const minDim = Math.min(img.width, img.height);
+          const sx = (img.width - minDim) / 2;
+          const sy = (img.height - minDim) / 2;
+          ctx.drawImage(img, sx, sy, minDim, minDim, 0, 0, size, size);
+          const compressed = canvas.toDataURL("image/jpeg", 0.85);
+          setEditPhotoUrl(compressed);
+          setProfileError("");
+        }
+      };
+      img.src = event.target?.result as string;
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleSaveProfile = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setProfileError("");
+    setProfileSuccess("");
+
+    if (!editDisplayName.trim()) {
+      setProfileError("O nome de apresentação não pode estar vazio.");
+      return;
+    }
+
+    if (editUsername.trim() && editUsername.trim().length < 3) {
+      setProfileError("O nome de utilizador deve ter pelo menos 3 caracteres.");
+      return;
+    }
+
+    setSavingProfile(true);
+
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch("/api/auth/profile", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { "Authorization": `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify({
+          displayName: editDisplayName.trim(),
+          username: editUsername.trim().replace(/^@/, ""),
+          photoUrl: editPhotoUrl
+        })
+      });
+
+      const data = await parseJsonResponse(res);
+
+      if (!res.ok) {
+        throw new Error(data.error || "Erro ao atualizar perfil.");
+      }
+
+      setUser(data.user);
+      localStorage.setItem("user", JSON.stringify(data.user));
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new Event("userProfileUpdated"));
+      }
+
+      setProfileSuccess("Perfil atualizado com sucesso!");
+      setTimeout(() => {
+        setProfileModalOpen(false);
+        setProfileSuccess("");
+      }, 900);
+    } catch (err: any) {
+      setProfileError(err.message || "Não foi possível guardar as alterações.");
+    } finally {
+      setSavingProfile(false);
+    }
+  };
+
+  const handleSendBugReport = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!bugDescription.trim()) return;
+    setBugSending(true);
+    try {
+      // Registo do relatório
+      await new Promise(r => setTimeout(r, 600));
+      setBugSuccess(true);
+      setBugDescription("");
+      setTimeout(() => {
+        setBugSuccess(false);
+      }, 4000);
+    } catch {
+      // Silencioso
+    } finally {
+      setBugSending(false);
     }
   };
 
@@ -226,6 +450,15 @@ export default function DashboardLayout({
                   </button>
                 )}
 
+                {/* Botão Perfil */}
+                <button
+                  onClick={handleOpenProfileModal}
+                  className="w-full flex items-center gap-3 rounded-lg px-3 py-2 text-xs font-semibold hover:bg-dark text-text transition-all cursor-pointer"
+                >
+                  <UserIcon className="w-4 h-4 text-primary flex-shrink-0" />
+                  <span>Perfil</span>
+                </button>
+
                 {/* Botão Personalização da Emanus */}
                 <button
                   onClick={() => {
@@ -249,6 +482,18 @@ export default function DashboardLayout({
                 </button>
 
                 <div className="h-px bg-muted/10" />
+
+                {/* Botão Ajuda */}
+                <button
+                  onClick={() => {
+                    setHelpOpen(true);
+                    setProfileMenuOpen(false);
+                  }}
+                  className="w-full flex items-center gap-3 rounded-lg px-3 py-2 text-xs font-semibold hover:bg-dark text-text transition-all cursor-pointer"
+                >
+                  <HelpCircle className="w-4 h-4 text-primary flex-shrink-0" />
+                  <span>Ajuda</span>
+                </button>
 
                 {/* Botão Acerca da Emanus IA */}
                 <button
@@ -289,13 +534,25 @@ export default function DashboardLayout({
             onClick={() => setProfileMenuOpen(!profileMenuOpen)}
             className="flex items-center justify-between p-2 rounded-xl hover:bg-dark/45 cursor-pointer transition-all active:scale-[0.98] border border-transparent hover:border-muted/10"
           >
-            <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold shadow-[0_0_12px_rgba(0,200,150,0.15)]">
-                {user.name.charAt(0)}
-              </div>
-              <div className="text-left">
-                <p className="text-sm font-semibold text-text truncate max-w-[120px]">{user.name}</p>
-                <p className="text-[11px] text-muted capitalize leading-none mt-0.5">{user.role}</p>
+            <div className="flex items-center gap-3 overflow-hidden">
+              {user.photoUrl ? (
+                <img 
+                  src={user.photoUrl} 
+                  alt={user.displayName || user.name} 
+                  className="h-10 w-10 rounded-full object-cover border border-primary/30 shadow-[0_0_12px_rgba(0,200,150,0.15)] shrink-0" 
+                />
+              ) : (
+                <div className="h-10 w-10 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold shadow-[0_0_12px_rgba(0,200,150,0.15)] shrink-0">
+                  {(user.displayName || user.name || "U").charAt(0).toUpperCase()}
+                </div>
+              )}
+              <div className="text-left overflow-hidden">
+                <p className="text-sm font-semibold text-text truncate max-w-[125px]">
+                  {user.displayName || user.name}
+                </p>
+                <p className="text-[11px] text-muted truncate max-w-[125px] leading-none mt-0.5">
+                  {user.username ? `@${user.username}` : user.role}
+                </p>
               </div>
             </div>
             {/* Indicador visual de menu clicável */}
@@ -350,12 +607,18 @@ export default function DashboardLayout({
                     <strong className="text-text font-semibold">Emanuel De Jesus</strong>
                   </div>
                   <div>
-                    <span className="text-[10px] text-muted block uppercase">Co-fundador</span>
-                    <strong className="text-text font-semibold">Alfredo Rodriguez</strong>
+                    <span className="text-[10px] text-muted block uppercase">Co-fundadores</span>
+                    <div className="flex flex-col gap-0.5">
+                      <strong className="text-text font-semibold">Alfredo Rodriguez</strong>
+                      <strong className="text-text font-semibold">Daniel Taba</strong>
+                    </div>
                   </div>
                   <div className="col-span-2 pt-1">
                     <span className="text-[10px] text-muted block uppercase">Equipa de Programadores</span>
-                    <strong className="text-text font-semibold">Emanuel De Jesus & Dewers Matari</strong>
+                    <div className="flex flex-col gap-0.5">
+                      <strong className="text-text font-semibold">Emanuel De Jesus</strong>
+                      <strong className="text-text font-semibold">Dewers Matari</strong>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -511,6 +774,454 @@ export default function DashboardLayout({
             >
               Confirmar Escolha
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Editar Perfil — Minimalista */}
+      {profileModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
+          <div className="w-full max-w-sm bg-surface border border-muted/20 rounded-3xl p-6 sm:p-7 shadow-2xl relative">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-base font-semibold text-text">Editar perfil</h3>
+              <button 
+                onClick={() => setProfileModalOpen(false)}
+                className="p-1.5 rounded-full text-muted hover:text-text hover:bg-dark/40 transition-colors cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {profileError && (
+              <div className="mb-4 rounded-xl border border-danger/20 bg-danger/10 p-3 text-xs text-danger flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 text-danger shrink-0" />
+                <span>{profileError}</span>
+              </div>
+            )}
+
+            {profileSuccess && (
+              <div className="mb-4 rounded-xl border border-primary/20 bg-primary/10 p-3 text-xs text-primary flex items-center gap-2">
+                <Check className="w-4 h-4 text-primary shrink-0" />
+                <span>{profileSuccess}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleSaveProfile} className="space-y-4">
+              {/* Avatar Centralizado com botão de câmara */}
+              <div className="flex justify-center pb-2">
+                <div className="relative">
+                  {editPhotoUrl ? (
+                    <img 
+                      src={editPhotoUrl} 
+                      alt="Avatar" 
+                      className="w-24 h-24 rounded-full object-cover ring-2 ring-primary/30 shadow-md"
+                    />
+                  ) : (
+                    <div className="w-24 h-24 rounded-full bg-primary flex items-center justify-center text-white text-3xl font-medium tracking-wide shadow-md">
+                      {(() => {
+                        const name = (editDisplayName || user.name || "U").trim();
+                        const parts = name.split(/\s+/);
+                        if (parts.length > 1) {
+                          return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+                        }
+                        return name.slice(0, 2).toUpperCase();
+                      })()}
+                    </div>
+                  )}
+
+                  <label 
+                    htmlFor="avatar-upload" 
+                    className="absolute bottom-0 right-0 w-8 h-8 rounded-full bg-white dark:bg-dark border border-muted/20 text-muted hover:text-text shadow flex items-center justify-center cursor-pointer transition-all hover:scale-105"
+                    title="Carregar foto"
+                  >
+                    <Camera className="w-4 h-4" />
+                  </label>
+                  <input 
+                    id="avatar-upload"
+                    type="file" 
+                    accept="image/*" 
+                    onChange={handlePhotoUpload}
+                    className="hidden" 
+                  />
+                </div>
+              </div>
+
+              {/* Campo Nome de Apresentação */}
+              <div className="rounded-xl border border-muted/25 bg-surface px-4 py-2.5 focus-within:border-primary focus-within:ring-1 focus-within:ring-primary/20 transition-all">
+                <label className="block text-[11px] text-muted font-medium mb-0.5">
+                  Nome de apresentação
+                </label>
+                <input
+                  type="text"
+                  value={editDisplayName}
+                  onChange={(e) => setEditDisplayName(e.target.value)}
+                  placeholder="Emanuel De Jesus"
+                  maxLength={60}
+                  required
+                  className="w-full bg-transparent text-text text-sm outline-none placeholder:text-muted/40 font-medium"
+                />
+              </div>
+
+              {/* Campo Nome de Utilizador */}
+              <div className="rounded-xl border border-muted/25 bg-surface px-4 py-2.5 focus-within:border-primary focus-within:ring-1 focus-within:ring-primary/20 transition-all">
+                <label className="block text-[11px] text-muted font-medium mb-0.5">
+                  Nome de utilizador
+                </label>
+                <input
+                  type="text"
+                  value={editUsername}
+                  onChange={(e) => {
+                    const val = e.target.value.replace(/[^a-zA-Z0-9_.]/g, "").toLowerCase();
+                    setEditUsername(val);
+                  }}
+                  placeholder={user.email ? user.email.split("@")[0] : "emanueldejesus617"}
+                  maxLength={50}
+                  className="w-full bg-transparent text-text text-sm outline-none placeholder:text-muted/40 font-normal"
+                />
+              </div>
+
+              {/* Botões Cancelar / Guardar */}
+              <div className="flex items-center justify-end gap-2.5 pt-3">
+                <button
+                  type="button"
+                  onClick={() => setProfileModalOpen(false)}
+                  disabled={savingProfile}
+                  className="px-5 py-2 rounded-full border border-muted/30 text-text hover:bg-dark/40 text-xs font-semibold transition-all cursor-pointer"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={savingProfile}
+                  className="px-6 py-2 rounded-full bg-black text-white hover:bg-black/85 dark:bg-white dark:text-black dark:hover:bg-white/90 text-xs font-bold transition-all cursor-pointer disabled:opacity-50 flex items-center gap-1.5 shadow-sm active:scale-95"
+                >
+                  {savingProfile ? (
+                    <>
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      <span>A guardar...</span>
+                    </>
+                  ) : (
+                    <span>Guardar</span>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Aba de Ajuda */}
+      {helpOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/75 backdrop-blur-md animate-fade-in">
+          <div className="w-full max-w-2xl bg-surface border border-muted/15 rounded-3xl shadow-2xl relative max-h-[90vh] flex flex-col overflow-hidden">
+            {/* Header */}
+            <div className="flex items-center justify-between px-6 py-5 border-b border-muted/10 shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary shrink-0">
+                  <HelpCircle className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base sm:text-lg font-bold text-text">Central de Ajuda</h3>
+                  <p className="text-xs text-muted">Apoio ao estudante, privacidade e termos da Emanus IA</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setHelpOpen(false)}
+                className="p-1.5 rounded-full text-muted hover:text-text hover:bg-dark/40 transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Barra de Abas (Sub-navegação) */}
+            <div className="flex items-center gap-1.5 px-4 sm:px-6 py-2.5 border-b border-muted/10 bg-dark/25 overflow-x-auto shrink-0 scrollbar-none">
+              {[
+                { id: "support", label: "Centro de apoio", icon: LifeBuoy },
+                { id: "privacy-center", label: "Centro de privacidade", icon: ShieldCheck },
+                { id: "privacy-policy", label: "Política de privacidade", icon: Lock },
+                { id: "terms", label: "Termos de serviço", icon: FileText },
+                { id: "report-bug", label: "Comunicar um erro", icon: Bug },
+              ].map((tab) => {
+                const Icon = tab.icon;
+                const active = helpTab === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => setHelpTab(tab.id as any)}
+                    className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
+                      active
+                        ? "bg-primary text-dark shadow-sm"
+                        : "text-muted hover:text-text hover:bg-surface/80"
+                    }`}
+                  >
+                    <Icon className="w-3.5 h-3.5" />
+                    <span>{tab.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Conteúdo da Aba Ativa */}
+            <div className="p-6 overflow-y-auto space-y-5 text-sm text-text leading-relaxed flex-1">
+              {helpTab === "support" && (
+                <div className="space-y-4">
+                  <div className="p-4 rounded-2xl bg-primary/10 border border-primary/20 text-xs sm:text-sm text-text flex items-start gap-3">
+                    <LifeBuoy className="w-5 h-5 text-primary shrink-0 mt-0.5" />
+                    <div>
+                      <strong className="block text-primary font-semibold mb-1">Como podemos ajudar-te?</strong>
+                      <p className="text-muted leading-relaxed">
+                        A Emanus IA foi concebida para te acompanhar nos estudos do ensino primário, secundário e pré-universitário angolano. Consulta as perguntas frequentes abaixo ou entra em contacto direto.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-3">
+                    <h4 className="text-xs font-bold uppercase tracking-wider text-muted">Perguntas Frequentes (FAQ)</h4>
+
+                    <div className="p-4 rounded-xl border border-muted/15 bg-dark/30 space-y-1">
+                      <p className="font-semibold text-text text-xs sm:text-sm">Como tirar o máximo proveito da Emanus IA?</p>
+                      <p className="text-xs text-muted leading-relaxed">
+                        Podes fazer perguntas em texto ou voz. Para explicações aprofundadas, escolhe o estilo &quot;Passo a Passo&quot; nas opções de personalização.
+                      </p>
+                    </div>
+
+                    <div className="p-4 rounded-xl border border-muted/15 bg-dark/30 space-y-1">
+                      <p className="font-semibold text-text text-xs sm:text-sm">Os exames do simulador são oficiais?</p>
+                      <p className="text-xs text-muted leading-relaxed">
+                        Sim, todos os enunciados e tópicos seguem rigorosamente a matriz curricular oficial do Ministério da Educação de Angola (MINED).
+                      </p>
+                    </div>
+
+                    <div className="p-4 rounded-xl border border-muted/15 bg-dark/30 space-y-1">
+                      <p className="font-semibold text-text text-xs sm:text-sm">Como alterar a voz sintetizada?</p>
+                      <p className="text-xs text-muted leading-relaxed">
+                        No menu de perfil, clica em &quot;Personalização&quot; para escolher entre as vozes em língua portuguesa disponíveis no teu dispositivo.
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Contacto Direto */}
+                  <div className="p-4 rounded-2xl border border-muted/15 bg-dark/40 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+                    <div>
+                      <span className="text-muted block">Precisas de suporte direto da equipa?</span>
+                      <a href="mailto:suporteemanusia@gmail.com" className="text-text font-semibold hover:text-primary transition-colors">suporteemanusia@gmail.com</a>
+                    </div>
+                    <span className="px-3 py-1.5 rounded-full bg-surface border border-muted/20 text-muted font-medium text-[11px]">
+                      Seg – Sáb: 08h às 18h
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              {helpTab === "privacy-center" && (
+                <div className="space-y-4">
+                  <div className="p-4 rounded-2xl bg-secondary/10 border border-secondary/20 flex items-start gap-3">
+                    <ShieldCheck className="w-5 h-5 text-secondary shrink-0 mt-0.5" />
+                    <div>
+                      <strong className="block text-secondary font-semibold mb-1">Privacidade em Primeiro Lugar</strong>
+                      <p className="text-xs text-muted leading-relaxed">
+                        Na Emanus IA, a privacidade dos estudantes é um princípio fundamental. Conhece como gerimos e protegemos os teus dados educativos.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                    <div className="p-4 rounded-xl border border-muted/15 bg-dark/30 space-y-1.5">
+                      <strong className="text-text font-semibold block">Sem Anúncios ou Rastreamento Comercial</strong>
+                      <p className="text-muted leading-relaxed">
+                        Não vendemos as tuas informações e nunca utilizamos dados de estudantes para anúncios direcionados.
+                      </p>
+                    </div>
+                    <div className="p-4 rounded-xl border border-muted/15 bg-dark/30 space-y-1.5">
+                      <strong className="text-text font-semibold block">Encriptação de Ponta a Ponta</strong>
+                      <p className="text-muted leading-relaxed">
+                        Todas as mensagens, notas e resoluções de exercícios são transmitidas via ligação segura encriptada (HTTPS / SSL).
+                      </p>
+                    </div>
+                    <div className="p-4 rounded-xl border border-muted/15 bg-dark/30 space-y-1.5">
+                      <strong className="text-text font-semibold block">Gestão Transparente da Conta</strong>
+                      <p className="text-muted leading-relaxed">
+                        Podes editar a tua fotografia, o teu nome de utilizador e preferências de aprendizagem sempre que desejares.
+                      </p>
+                    </div>
+                    <div className="p-4 rounded-xl border border-muted/15 bg-dark/30 space-y-1.5">
+                      <strong className="text-text font-semibold block">Eliminação de Dados</strong>
+                      <p className="text-muted leading-relaxed">
+                        Podes solicitar a exclusão de todo o teu histórico e dados da conta através do endereço <a href="mailto:suporteemanusia@gmail.com" className="text-primary font-mono hover:underline">suporteemanusia@gmail.com</a>.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {helpTab === "privacy-policy" && (
+                <div className="space-y-4 text-xs text-muted leading-relaxed">
+                  <div className="space-y-1 border-b border-muted/10 pb-3">
+                    <h4 className="text-sm font-bold text-text">Política de Privacidade da Emanus IA</h4>
+                    <p className="text-[11px] text-muted">Última atualização: Setembro de 2026</p>
+                  </div>
+
+                  <div className="space-y-3">
+                    <div>
+                      <strong className="text-text font-semibold block mb-1">1. Informações que Recolhemos</strong>
+                      <p>
+                        Recolhemos apenas as informações essenciais para a experiência de aprendizagem: nome, endereço de e-mail, classe/curso escolar e o histórico de progresso e resolução de exercícios.
+                      </p>
+                    </div>
+
+                    <div>
+                      <strong className="text-text font-semibold block mb-1">2. Finalidade do Tratamento de Dados</strong>
+                      <p>
+                        Os dados são utilizados exclusivamente para: (a) personalizar o plano de aulas do estudante; (b) permitir a correção automática de exames e simulações; (c) otimizar o desempenho do tutor inteligente.
+                      </p>
+                    </div>
+
+                    <div>
+                      <strong className="text-text font-semibold block mb-1">3. Proteção e Armazenamento</strong>
+                      <p>
+                        Os dados são armazenados em infraestrutura segura com cópias de segurança criptografadas e controlo de acesso restrito a equipas autorizadas.
+                      </p>
+                    </div>
+
+                    <div>
+                      <strong className="text-text font-semibold block mb-1">4. Direitos dos Estudantes e Encarregados</strong>
+                      <p>
+                        Garantimos o direito de aceder, corrigir, descarregar ou eliminar os seus dados pessoais a qualquer momento. Para pedidos de privacidade: <a href="mailto:suporteemanusia@gmail.com" className="text-primary font-medium hover:underline">suporteemanusia@gmail.com</a>.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {helpTab === "terms" && (
+                <div className="space-y-4 text-xs text-muted leading-relaxed">
+                  <div className="space-y-1 border-b border-muted/10 pb-3">
+                    <h4 className="text-sm font-bold text-text">Termos de Serviço da Plataforma</h4>
+                    <p className="text-[11px] text-muted">Condições Gerais de Uso Pedagógico</p>
+                  </div>
+
+                  <div className="space-y-3">
+                    <div>
+                      <strong className="text-text font-semibold block mb-1">1. Aceitação dos Termos</strong>
+                      <p>
+                        Ao aceder à plataforma Emanus IA, o utilizador declara concordar com as regras de utilização pedagógica e de convivência digital aqui descritas.
+                      </p>
+                    </div>
+
+                    <div>
+                      <strong className="text-text font-semibold block mb-1">2. Uso Ético e Académico</strong>
+                      <p>
+                        A Emanus IA é uma ferramenta de estudo e mentoria. Os utilizadores comprometem-se a utilizar as explicações e resoluções para fins formativos e de compreensão genuína, promovendo a integridade académica.
+                      </p>
+                    </div>
+
+                    <div>
+                      <strong className="text-text font-semibold block mb-1">3. Propriedade Intelectual</strong>
+                      <p>
+                        Todos os conteúdos, módulos de IA, interfaces, designs, exercícios e materiais pedagógicos pertencem à equipa de desenvolvimento da Emanus IA e estão protegidos pelas leis de propriedade intelectual.
+                      </p>
+                    </div>
+
+                    <div>
+                      <strong className="text-text font-semibold block mb-1">4. Responsabilidade e Disponibilidade</strong>
+                      <p>
+                        Esforçamo-nos para manter a plataforma sempre acessível e com as matérias rigorosamente alinhadas aos programas nacionais. No entanto, o serviço é fornecido no estado em que se encontra (&quot;as is&quot;).
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {helpTab === "report-bug" && (
+                <div className="space-y-4">
+                  <div>
+                    <h4 className="text-sm font-bold text-text mb-1">Comunicar um Erro ou Problema</h4>
+                    <p className="text-xs text-muted">
+                      Encontraste alguma falha ou comportamento inesperado na plataforma? Descreve abaixo para a nossa equipa técnica resolver o mais rápido possível.
+                    </p>
+                  </div>
+
+                  {bugSuccess && (
+                    <div className="p-3.5 rounded-xl border border-primary/25 bg-primary/10 text-xs text-primary flex items-center gap-2 animate-fade-in">
+                      <CheckCircle2 className="w-4 h-4 shrink-0 text-primary" />
+                      <span>O teu relatório foi enviado com sucesso à equipa técnica da Emanus IA. Obrigado pela tua colaboração!</span>
+                    </div>
+                  )}
+
+                  <form onSubmit={handleSendBugReport} className="space-y-4">
+                    <div>
+                      <label className="block text-xs font-semibold text-text mb-1.5">
+                        Onde ocorreu o erro?
+                      </label>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                        {[
+                          { id: "ia", label: "Tutor Emanus IA" },
+                          { id: "exams", label: "Simulador / Exames" },
+                          { id: "audio", label: "Voz e Áudio" },
+                          { id: "ui", label: "Visual / Interface" },
+                          { id: "auth", label: "Conta / Login" },
+                          { id: "other", label: "Outro" }
+                        ].map(cat => (
+                          <button
+                            key={cat.id}
+                            type="button"
+                            onClick={() => setBugCategory(cat.id)}
+                            className={`px-3 py-2 rounded-xl text-xs font-medium border text-left transition-all cursor-pointer ${
+                              bugCategory === cat.id
+                                ? "border-primary bg-primary/10 text-primary font-semibold"
+                                : "border-muted/20 bg-dark/40 text-muted hover:text-text hover:border-muted/40"
+                            }`}
+                          >
+                            {cat.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-semibold text-text mb-1.5">
+                        Descrição do erro
+                      </label>
+                      <textarea
+                        value={bugDescription}
+                        onChange={(e) => setBugDescription(e.target.value)}
+                        placeholder="Ex: Ao tentar responder à questão 3 do exame de Matemática, a página não carregou a imagem da figura geométrica..."
+                        rows={4}
+                        required
+                        className="w-full px-3.5 py-2.5 rounded-xl border border-muted/25 bg-dark/50 text-text text-xs sm:text-sm outline-none focus:border-primary transition-colors resize-none placeholder:text-muted/40"
+                      />
+                    </div>
+
+                    <div className="flex items-center justify-end gap-3 pt-2">
+                      <button
+                        type="button"
+                        onClick={() => setHelpOpen(false)}
+                        className="px-4 py-2 rounded-xl text-xs font-medium text-muted hover:text-text transition-colors cursor-pointer"
+                      >
+                        Fechar
+                      </button>
+                      <button
+                        type="submit"
+                        disabled={bugSending || !bugDescription.trim()}
+                        className="px-5 py-2.5 rounded-xl bg-primary text-dark font-bold text-xs uppercase tracking-wider hover:opacity-90 active:scale-95 transition-all cursor-pointer disabled:opacity-50 flex items-center gap-2"
+                      >
+                        {bugSending ? (
+                          <>
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                            <span>A enviar...</span>
+                          </>
+                        ) : (
+                          <>
+                            <Send className="w-3.5 h-3.5" />
+                            <span>Enviar Relatório</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}

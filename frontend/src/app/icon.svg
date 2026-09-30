@@ -1,18 +1,24 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" fill="none">
   <defs>
-    <linearGradient id="eGrad2" x1="0%" y1="0%" x2="100%" y2="100%">
+    <!-- Gradiente principal da letra E: azul royal → verde esmeralda -->
+    <linearGradient id="eGrad" x1="0%" y1="0%" x2="100%" y2="100%">
       <stop offset="0%"   stop-color="#1A56DB"/>
       <stop offset="50%"  stop-color="#0D47A1"/>
       <stop offset="100%" stop-color="#00C896"/>
     </linearGradient>
-    <linearGradient id="orbitGrad2" x1="0%" y1="0%" x2="100%" y2="100%">
+
+    <!-- Gradiente da órbita e planeta IA -->
+    <linearGradient id="orbitGrad" x1="0%" y1="0%" x2="100%" y2="100%">
       <stop offset="0%"   stop-color="#0D9488"/>
       <stop offset="60%"  stop-color="#10B981"/>
       <stop offset="100%" stop-color="#34D399"/>
     </linearGradient>
   </defs>
 
-  <!-- Letra E estilizada -->
+  <!-- ════════════════════════════
+       LETRA  E  ESTILIZADA
+       com cantos arredondados
+  ════════════════════════════ -->
   <path
     d="M 118 16
        C 128 16 136 24 136 34
@@ -35,18 +41,21 @@
        L 14 78
        C 14 46 30 16 68 16
        Z"
-    fill="url(#eGrad2)"
+    fill="url(#eGrad)"
   />
 
-  <!-- Círculo do planeta IA -->
+  <!-- ════════════════════════════
+       PLANETA  IA
+  ════════════════════════════ -->
+  <!-- Círculo do planeta -->
   <circle
     cx="142" cy="108" r="30"
-    stroke="url(#orbitGrad2)"
+    stroke="url(#orbitGrad)"
     stroke-width="4.5"
     fill="none"
   />
 
-  <!-- Texto "IA" -->
+  <!-- Texto "IA" dentro do planeta -->
   <text
     x="142" y="118"
     text-anchor="middle"
@@ -57,18 +66,18 @@
     letter-spacing="0.5"
   >IA</text>
 
-  <!-- Órbita elíptica -->
+  <!-- Órbita elíptica inclinada ao redor do planeta -->
   <ellipse
     cx="142" cy="108"
     rx="45" ry="16"
     transform="rotate(-30 142 108)"
-    stroke="url(#orbitGrad2)"
+    stroke="url(#orbitGrad)"
     stroke-width="3.5"
     fill="none"
     stroke-linecap="round"
   />
 
-  <!-- Sparkle -->
+  <!-- Sparkle / Estrela de 4 pontas -->
   <path
     d="M 168 64
        C 168 70 170 73 176 73

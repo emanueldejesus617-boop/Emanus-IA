@@ -1,24 +1,52 @@
 import { FastifyInstance } from "fastify";
+import { z } from "zod";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { firestore } from "../db/db";
 import { authenticateUser } from "./auth";
 import { safeParseJSON } from "../utils/jsonSanitizer";
+import { rateLimit } from "../utils/rateLimit";
+
+const GenerateScheduleSchema = z.object({
+  shift: z.enum(["morning", "afternoon", "night"]).default("morning").optional()
+});
+
+const SlotItemSchema = z.object({
+  time: z.string().min(1),
+  monday: z.string().optional().default(""),
+  tuesday: z.string().optional().default(""),
+  wednesday: z.string().optional().default(""),
+  thursday: z.string().optional().default(""),
+  friday: z.string().optional().default(""),
+  saturday: z.string().optional().default(""),
+  sunday: z.string().optional().default("")
+});
+
+const UpdateScheduleSchema = z.object({
+  weekData: z.array(SlotItemSchema).min(1, "O horário deve conter pelo menos um bloco de estudo.")
+});
 
 export async function scheduleRoutes(fastify: FastifyInstance) {
   const ai = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
 
   // POST /generate - Generate a customized study schedule with AI
   fastify.post("/generate", async (request, reply) => {
+    if (!rateLimit(request, reply, { maxRequests: 5, windowMs: 60 * 1000 })) {
+      return;
+    }
+
     const decoded = await authenticateUser(request, reply);
     if (!decoded) return;
 
     try {
+      const { shift: rawShift } = GenerateScheduleSchema.parse(request.body || {});
+      const shift = rawShift || "morning";
+
       const userRef = firestore.collection("users").doc(decoded.id);
       const userDoc = await userRef.get();
       let user: any = null;
 
       if (!userDoc.exists) {
-        const userSnapshot = await firestore.collection("users").where("email", "==", decoded.email?.toUpperCase()).limit(1).get();
+        const userSnapshot = await firestore.collection("users").where("email", "==", decoded.email?.toLowerCase()).limit(1).get();
         if (userSnapshot.empty) {
           return reply.status(404).send({ error: "Utilizador não encontrado" });
         }
@@ -32,9 +60,6 @@ export async function scheduleRoutes(fastify: FastifyInstance) {
       const classe = user.classe || "12.ª Classe";
       const curso = user.curso || "Geral";
       const subjects = user.subjects ? (typeof user.subjects === 'string' ? JSON.parse(user.subjects) : user.subjects) : ["Língua Portuguesa", "Matemática", "Inglês", "Educação Física"];
-
-      const body = request.body as { shift?: string };
-      const shift = body?.shift || "morning";
 
       const shiftTimeMap: Record<string, { label: string; slots: string[] }> = {
         morning: {
@@ -128,6 +153,9 @@ Retorne APENAS o JSON válido sem formatação markdown ou blocos de código adi
 
       return { weekData };
     } catch (e: any) {
+      if (e instanceof z.ZodError) {
+        return reply.status(400).send({ error: "Parâmetros inválidos", details: e.errors });
+      }
       fastify.log.error(e);
       let errorMsg = "Erro ao gerar o horário inteligente";
       if (e.status === 429 || (e.message && e.message.toLowerCase().includes("quota"))) {
@@ -170,10 +198,7 @@ Retorne APENAS o JSON válido sem formatação markdown ou blocos de código adi
     if (!decoded) return;
 
     try {
-      const { weekData } = request.body as { weekData: any[] };
-      if (!weekData || !Array.isArray(weekData)) {
-        return reply.status(400).send({ error: "Dados de horário inválidos." });
-      }
+      const { weekData } = UpdateScheduleSchema.parse(request.body);
 
       const snapshot = await firestore
         .collection("study_plans")
@@ -198,6 +223,10 @@ Retorne APENAS o JSON válido sem formatação markdown ou blocos de código adi
 
       return { success: true, weekData };
     } catch (e: any) {
+      if (e instanceof z.ZodError) {
+        const errorMsg = e.errors[0]?.message || "Dados de horário inválidos";
+        return reply.status(400).send({ error: errorMsg, details: e.errors });
+      }
       fastify.log.error(e);
       return reply.status(500).send({ error: "Erro ao guardar o horário editado." });
     }

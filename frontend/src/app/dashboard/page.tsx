@@ -147,6 +147,19 @@ export default function DashboardPage() {
   useEffect(() => {
     loadUserData();
     loadDashboardData();
+
+    const handleProfileUpdated = () => {
+      const stored = localStorage.getItem("user");
+      if (stored) {
+        try {
+          setUser(JSON.parse(stored));
+        } catch {}
+      }
+    };
+    window.addEventListener("userProfileUpdated", handleProfileUpdated);
+    return () => {
+      window.removeEventListener("userProfileUpdated", handleProfileUpdated);
+    };
   }, [loadUserData, loadDashboardData]);
 
   if (!user) return null;
