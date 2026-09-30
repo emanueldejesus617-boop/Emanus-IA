@@ -90,8 +90,9 @@ async function start() {
     // Seed do utilizador administrador seguro
     await seedAdminUser();
 
-    await fastify.listen({ port: 8080, host: '0.0.0.0' });
-    console.log(`🔒 Servidor seguro a escutar na porta 8080 (HTTPS/Proxy pronto)`);
+    const port = Number(process.env.PORT) || 8080;
+    await fastify.listen({ port, host: '0.0.0.0' });
+    console.log(`🔒 Servidor seguro a escutar na porta ${port} (HTTPS/Proxy pronto)`);
   } catch (err) {
     fastify.log.error(err);
     process.exit(1);

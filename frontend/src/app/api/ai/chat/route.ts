@@ -10,9 +10,12 @@ export async function POST(req: NextRequest) {
   const body = await req.text();
   const authHeader = req.headers.get("Authorization");
 
+  const baseUrl = process.env.BACKEND_URL || "http://127.0.0.1:8080";
+  const targetUrl = new URL("/api/ai/chat", baseUrl);
+
   let backendRes: Response;
   try {
-    backendRes = await fetch(`${BACKEND_URL}/api/ai/chat`, {
+    backendRes = await fetch(targetUrl, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
