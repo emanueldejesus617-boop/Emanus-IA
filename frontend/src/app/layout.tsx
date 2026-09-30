@@ -19,7 +19,16 @@ export default function RootLayout({
         {/* ── Favicon Emanus IA ── */}
         <link rel="icon" type="image/svg+xml" href="/icon.svg" />
         <link rel="shortcut icon" href="/icon.svg" />
-        <link rel="apple-touch-icon" href="/icon.svg" />
+        <link rel="apple-touch-icon" href="/icon-192.png" />
+        
+        {/* ── PWA & App Download ── */}
+        <link rel="manifest" href="/manifest.json" />
+        <meta name="theme-color" content="#0B0F17" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        <meta name="apple-mobile-web-app-title" content="Emanus IA" />
+        <meta name="application-name" content="Emanus IA" />
+        <meta name="mobile-web-app-capable" content="yes" />
         {/* ── Fontes ── */}
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
