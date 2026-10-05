@@ -27,7 +27,6 @@ import {
   BookOpen
 } from "lucide-react";
 import { Logo } from "@/components/logo";
-import { PWAInstallButton } from "@/components/pwa-install-button";
 import { auth } from "@/lib/firebase";
 import { signOut } from "firebase/auth";
 import { parseJsonResponse } from "@/lib/utils";
@@ -350,22 +349,19 @@ export default function DashboardLayout({
         <Link href="/dashboard" className="cursor-pointer">
           <Logo variant="topbar" />
         </Link>
-        <div className="flex items-center gap-2">
-          <PWAInstallButton variant="compact" />
-          <button 
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="p-2 rounded-lg bg-dark/40 text-text hover:text-primary transition-colors cursor-pointer border border-muted/15 flex items-center justify-center"
-            aria-label="Menu"
-          >
-            <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              {mobileMenuOpen ? (
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              ) : (
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-              )}
-            </svg>
-          </button>
-        </div>
+        <button 
+          onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+          className="p-2 rounded-lg bg-dark/40 text-text hover:text-primary transition-colors cursor-pointer border border-muted/15 flex items-center justify-center"
+          aria-label="Menu"
+        >
+          <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            {mobileMenuOpen ? (
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            ) : (
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+            )}
+          </svg>
+        </button>
       </header>
 
       {/* Mobile Drawer Overlay */}
@@ -407,11 +403,6 @@ export default function DashboardLayout({
             );
           })}
         </nav>
-
-        {/* Instalar / Baixar App na barra lateral */}
-        <div className="px-4 py-2">
-          <PWAInstallButton variant="badge" className="w-full justify-center" />
-        </div>
 
         {/* Setor de Perfil do Usuário com Dropdown */}
         <div className="p-4 border-t border-muted/20 relative">

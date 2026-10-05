@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
 import { Sparkles, Mic, FileText, Lightbulb, Zap, AlertTriangle, CheckCircle2, XCircle } from "lucide-react";
 import { Logo } from "@/components/logo";
-import { PWAInstallButton } from "@/components/pwa-install-button";
 import { auth, googleProvider } from "@/lib/firebase";
 import { 
   signInWithPopup, 
@@ -467,15 +466,13 @@ export default function LoginPage() {
   return (
     <>
     <div className="grid min-h-screen grid-cols-1 lg:grid-cols-12 bg-dark font-sans text-text overflow-x-hidden transition-colors duration-300">
-      {/* Botões Flutuantes no Topo: Baixar App e Alternar Tema */}
-      <div className="fixed top-4 sm:top-6 right-4 sm:right-6 z-50 flex items-center gap-2.5">
-        <PWAInstallButton variant="button" />
-        {mounted && (
-          <button
-            onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-            className="p-3 rounded-2xl border border-muted/15 bg-surface/80 backdrop-blur-md text-text hover:border-primary/40 active:scale-95 transition-all shadow-xl flex items-center justify-center cursor-pointer"
-            aria-label="Alternar Tema"
-          >
+      {/* Botão Flutuante de Alternância de Tema */}
+      {mounted && (
+        <button
+          onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+          className="fixed top-6 right-6 z-50 p-3 rounded-2xl border border-muted/15 bg-surface/80 backdrop-blur-md text-text hover:border-primary/40 active:scale-95 transition-all shadow-xl flex items-center justify-center cursor-pointer"
+          aria-label="Alternar Tema"
+        >
             {theme === "dark" ? (
               <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-amber-400">
                 <circle cx="12" cy="12" r="4"></circle>
@@ -494,8 +491,7 @@ export default function LoginPage() {
               </svg>
             )}
           </button>
-        )}
-      </div>
+      )}
 
       {/* Lado Esquerdo - Painel Criativo / Exortação (visível apenas em telas grandes) */}
       <div className="relative hidden lg:flex lg:col-span-7 flex-col justify-between p-16 bg-[#E5E7EB] dark:bg-dark border-r border-muted/5 overflow-hidden transition-colors duration-300">
@@ -593,10 +589,9 @@ export default function LoginPage() {
         <div className="absolute top-1/2 left-1/2 translate-x-[-50%] translate-y-[-50%] w-[90%] h-[90%] lg:w-[60%] lg:h-[60%] rounded-full bg-primary/5 blur-[90px] pointer-events-none" />
 
         {/* Cabeçalho visível no Mobile */}
-        <div className="lg:hidden flex flex-col items-center mb-6 text-center relative z-10 w-full max-w-xs">
+        <div className="lg:hidden flex flex-col items-center mb-8 text-center relative z-10">
           <Logo variant="splash" className="mb-3" />
-          <p className="text-xs text-muted mt-1 mb-4">O teu professor inteligente particular.</p>
-          <PWAInstallButton variant="button" className="w-full justify-center" />
+          <p className="text-xs text-muted mt-1">O teu professor inteligente particular.</p>
         </div>
 
         {/* Card do Formulário */}

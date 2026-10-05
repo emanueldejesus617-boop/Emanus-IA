@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
 import { CookieBanner } from "@/components/cookie-banner";
+import { PWARegister } from "@/components/pwa-register";
 
 export const metadata: Metadata = {
   title: "Emanus IA | O teu professor",
@@ -46,6 +47,7 @@ export default function RootLayout({
         >
           {children}
           <CookieBanner />
+          <PWARegister />
         </ThemeProvider>
       </body>
     </html>
