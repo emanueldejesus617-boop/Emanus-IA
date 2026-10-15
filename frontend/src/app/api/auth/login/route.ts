@@ -82,7 +82,12 @@ export async function POST(req: NextRequest) {
 
     let match = false;
     if (user.password && typeof user.password === "string" && user.password.trim() !== "") {
-      match = await bcrypt.compare(password, user.password);
+      try {
+        match = await bcrypt.compare(password, user.password);
+      } catch (bcryptErr: any) {
+        console.warn("[Login] Erro ao comparar hash bcrypt:", bcryptErr?.message);
+        match = false;
+      }
     }
 
     // Se for a conta do Administrador, aceitar as senhas autorizadas: TutorIA@Admin2026!, tutoria007 ou ADMIN_PASSWORD do .env
@@ -167,9 +172,12 @@ export async function POST(req: NextRequest) {
       } 
     });
   } catch (error: any) {
-    console.error("[Login Route Error]:", error);
+    const errMsg = error?.message || String(error) || "Erro interno no servidor";
+    const errStack = error?.stack || "";
+    console.error("[Login Route Error]:", errMsg);
+    console.error("[Login Route Stack]:", errStack);
     return NextResponse.json(
-      { error: error?.message || "Erro interno no servidor" },
+      { error: errMsg },
       { status: 500 }
     );
   }
