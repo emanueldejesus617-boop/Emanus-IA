@@ -5,12 +5,12 @@ import { firestore, adminAuth } from "../db/db";
 import { rateLimit } from "../utils/rateLimit";
 import { normalizeEmail, signToken, verifyToken } from "../utils/security";
 
-const LoginSchema = z.object({
+export const LoginSchema = z.object({
   email: z.string().email("Formato de email inválido"),
   password: z.string().min(1, "A palavra-passe é obrigatória"),
 });
 
-const RegisterSchema = z.object({
+export const RegisterSchema = z.object({
   name: z.string().min(2, "O nome deve ter pelo menos 2 caracteres").max(100, "O nome é demasiado longo"),
   email: z.string().email("Formato de email inválido"),
   password: z.string()
@@ -21,13 +21,13 @@ const RegisterSchema = z.object({
     .regex(/[^A-Za-z0-9]/, "A palavra-passe deve conter pelo menos um caractere especial"),
 });
 
-const ProfileSchema = z.object({
+export const ProfileSchema = z.object({
   classe: z.string().min(1, "A classe é obrigatória"),
   curso: z.string().optional(),
   subjects: z.array(z.string()),
 });
 
-const EditProfileSchema = z.object({
+export const EditProfileSchema = z.object({
   displayName: z.string().min(2, "O nome de apresentação deve ter pelo menos 2 caracteres").max(100).optional().or(z.literal("")),
   username: z.string().min(3, "O nome de utilizador deve ter pelo menos 3 caracteres").max(30).regex(/^[a-zA-Z0-9_.-]+$/, "Nome de utilizador só pode conter letras, números, sublinhado e traço").optional().or(z.literal("")),
   photoUrl: z.string().max(3500000, "A imagem é demasiado grande (máx ~2.5MB)").optional().or(z.literal("")),
@@ -72,7 +72,7 @@ export async function authenticateUser(request: any, reply: any) {
 /**
  * Função utilitária para localizar utilizador no Firestore por ID ou por qualquer variante de email.
  */
-async function findUserByEmailOrId(id: string, email: string) {
+export async function findUserByEmailOrId(id: string, email: string) {
   const usersRef = firestore.collection("users");
   
   if (id) {

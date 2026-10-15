@@ -5,16 +5,20 @@ const monorepoRoot = process.cwd().endsWith("frontend")
   ? path.resolve(process.cwd(), "..")
   : process.cwd();
 
+const isVercel = !!process.env.VERCEL;
+const backendUrl = process.env.BACKEND_URL;
+const shouldRewrite = backendUrl && (!isVercel || (!backendUrl.includes("localhost") && !backendUrl.includes("127.0.0.1")));
+
 const nextConfig: NextConfig = {
   outputFileTracingRoot: monorepoRoot,
   async rewrites() {
     return {
       beforeFiles: [],
-      afterFiles: process.env.BACKEND_URL
+      afterFiles: shouldRewrite
         ? [
             {
               source: '/api/:path*',
-              destination: `${process.env.BACKEND_URL}/api/:path*`,
+              destination: `${backendUrl}/api/:path*`,
             },
           ]
         : [],
