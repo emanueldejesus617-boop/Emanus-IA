@@ -7,17 +7,6 @@ import { PWARegister } from "@/components/pwa-register";
 export const metadata: Metadata = {
   title: "Emanus IA | O teu professor",
   description: "Construído em Angola. Para o mundo.",
-  icons: {
-    icon: [
-      { url: '/favicon.ico', sizes: 'any' },
-      { url: '/favicon-32.png', sizes: '32x32', type: 'image/png' },
-      { url: '/favicon-16.png', sizes: '16x16', type: 'image/png' },
-      { url: '/icon-192.png', sizes: '192x192', type: 'image/png' },
-      { url: '/icon-512.png', sizes: '512x512', type: 'image/png' },
-    ],
-    apple: '/apple-touch-icon.png',
-    shortcut: '/favicon.ico',
-  },
 };
 
 export default function RootLayout({
@@ -28,10 +17,10 @@ export default function RootLayout({
   return (
     <html lang="pt-AO" suppressHydrationWarning>
       <head>
-        {/* ── Favicon Emanus IA ── */}
-        <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+        {/* ── Favicon Emanus IA (Next.js serve automaticamente app/icon.png) ── */}
         <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
         <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16.png" />
+        <link rel="shortcut icon" href="/favicon.ico" />
         <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
         <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png" />
         <link rel="icon" type="image/png" sizes="512x512" href="/icon-512.png" />
