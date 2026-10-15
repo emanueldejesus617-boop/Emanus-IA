@@ -5,16 +5,15 @@ const nextConfig: NextConfig = {
   outputFileTracingRoot: path.join(process.cwd(), "../"),
   async rewrites() {
     return {
-      // Regras "beforeFiles": aplicadas ANTES de verificar rotas reais do Next.js
       beforeFiles: [],
-      // Regras "afterFiles": aplicadas APÓS verificar rotas reais do Next.js (Route Handlers têm prioridade)
-      afterFiles: [
-        {
-          // Proxia /api/* para o backend, MAS as rotas reais do Next.js têm prioridade
-          source: '/api/:path*',
-          destination: `${process.env.BACKEND_URL || 'http://127.0.0.1:8080'}/api/:path*`,
-        },
-      ],
+      afterFiles: process.env.BACKEND_URL
+        ? [
+            {
+              source: '/api/:path*',
+              destination: `${process.env.BACKEND_URL}/api/:path*`,
+            },
+          ]
+        : [],
       fallback: [],
     };
   },

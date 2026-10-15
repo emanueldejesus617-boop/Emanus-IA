@@ -1,7 +1,11 @@
 import dotenv from "dotenv";
 import path from "path";
-dotenv.config({ path: path.resolve(__dirname, "../../.env"), override: true });
-dotenv.config({ path: path.resolve(__dirname, "../.env"), override: true });
+// Em produção (Railway/Vercel) as variáveis são injectadas diretamente — dotenv é apenas para desenvolvimento local
+if (process.env.NODE_ENV !== "production") {
+  dotenv.config({ path: path.resolve(__dirname, "../../.env"), override: true });
+  dotenv.config({ path: path.resolve(__dirname, "../.env"), override: true });
+}
+
 import dns from "node:dns";
 dns.setDefaultResultOrder("ipv4first");
 import Fastify from "fastify";

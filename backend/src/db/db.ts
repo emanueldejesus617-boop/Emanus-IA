@@ -1,8 +1,12 @@
 import dotenv from 'dotenv';
 import path from 'path';
 import fs from 'fs';
-dotenv.config({ path: path.resolve(__dirname, '../../.env'), override: true });
-dotenv.config({ path: path.resolve(__dirname, '../.env'), override: true });
+// Em produção (Railway) as variáveis são injectadas directamente
+if (process.env.NODE_ENV !== 'production') {
+  dotenv.config({ path: path.resolve(__dirname, '../../.env'), override: true });
+  dotenv.config({ path: path.resolve(__dirname, '../.env'), override: true });
+}
+
 import { initializeApp, getApps, cert } from 'firebase-admin/app';
 import { getFirestore as getFirebaseFirestore } from 'firebase-admin/firestore';
 import { getAuth as getFirebaseAuth } from 'firebase-admin/auth';
