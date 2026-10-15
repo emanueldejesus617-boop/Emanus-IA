@@ -7,13 +7,14 @@
     "backend"
   ],
   "scripts": {
-    "build": "npm run build --workspace=frontend && node -e \"const fs=require('fs'); try{if(!fs.existsSync('.next'))fs.symlinkSync('frontend/.next','.next','junction')}catch(e){}\"",
+    "build": "npm run build --workspace=frontend && node -e \"const fs=require('fs'); if(fs.existsSync('.next')) fs.rmSync('.next',{recursive:true,force:true}); fs.cpSync('frontend/.next','.next',{recursive:true});\"",
     "start": "npm run start --workspace=frontend",
     "dev": "node dev.js"
   },
   "dependencies": {
     "@types/bcryptjs": "^2.4.6",
     "bcryptjs": "^3.0.3",
+    "next": "15.5.15",
     "protobufjs": "^8.7.2"
   }
 }
