@@ -8,28 +8,41 @@ let initPromise: Promise<FastifyInstance> | null = null;
 
 export async function getFastifyApp(): Promise<FastifyInstance> {
   if (app) return app;
-  if (initPromise) return initPromise;
+  if (initPromise) {
+    try {
+      return await initPromise;
+    } catch (e) {
+      initPromise = null;
+      throw e;
+    }
+  }
 
   initPromise = (async () => {
-    const server = Fastify({
-      logger: false,
-    });
+    try {
+      const server = Fastify({
+        logger: false,
+      });
 
-    await server.register(cors, {
-      origin: true,
-      credentials: true,
-    });
+      await server.register(cors, {
+        origin: true,
+        credentials: true,
+      });
 
-    setupRoutes(server);
+      setupRoutes(server);
 
-    // Semeia o utilizador admin em background sem bloquear o arranque do servidor
-    seedAdminUser().catch((e) => {
-      console.warn("Aviso ao semear utilizador admin:", e);
-    });
+      // Semeia o utilizador admin em background sem bloquear o arranque do servidor
+      seedAdminUser().catch((e) => {
+        console.warn("Aviso ao semear utilizador admin:", e);
+      });
 
-    await server.ready();
-    app = server;
-    return app;
+      await server.ready();
+      app = server;
+      return app;
+    } catch (err) {
+      initPromise = null;
+      app = null;
+      throw err;
+    }
   })();
 
   return initPromise;

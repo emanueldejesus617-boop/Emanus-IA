@@ -333,17 +333,26 @@ export async function authRoutes(fastify: FastifyInstance) {
         }
       }
 
-      await firestore.collection("users").doc(user.id).update({
-        lastLoginAt: now.toISOString(),
-        streak: newStreak
-      });
+      try {
+        await firestore.collection("users").doc(user.id).update({
+          lastLoginAt: now.toISOString(),
+          streak: newStreak
+        });
+      } catch (updateErr) {
+        fastify.log.warn({ updateErr }, "Aviso ao atualizar lastLoginAt e streak");
+      }
 
       const token = signToken(
         { id: user.id, email: normalizedEmail, role: user.role || "student", name: user.name },
         "7d"
       );
 
-      const parsedSubjects = user.subjects ? (typeof user.subjects === 'string' ? JSON.parse(user.subjects) : user.subjects) : [];
+      let parsedSubjects: string[] = [];
+      try {
+        parsedSubjects = user.subjects ? (typeof user.subjects === 'string' ? JSON.parse(user.subjects) : user.subjects) : [];
+      } catch {
+        parsedSubjects = [];
+      }
 
       return { 
         token, 
@@ -368,7 +377,7 @@ export async function authRoutes(fastify: FastifyInstance) {
         return reply.status(400).send({ error: errorMsg, details: e.errors });
       }
       fastify.log.error(e);
-      return reply.status(500).send({ error: "Erro interno no servidor" });
+      return reply.status(500).send({ error: e?.message || "Erro interno no servidor" });
     }
   });
 

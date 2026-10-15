@@ -18,6 +18,10 @@ export async function parseJsonResponse(res: Response) {
         throw new Error("O serviço está a reiniciar ou temporariamente indisponível. Por favor, tenta novamente em breves momentos.");
       }
       if (res.status === 500) {
+        const cleanSnippet = text.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim().substring(0, 120);
+        if (cleanSnippet && !cleanSnippet.toLowerCase().includes("doctype") && cleanSnippet.length > 5) {
+          throw new Error(`Erro interno no servidor: ${cleanSnippet}`);
+        }
         throw new Error("Erro interno no servidor. Por favor, tenta novamente.");
       }
       throw new Error(`Erro no servidor (${res.status}): ${text.substring(0, 100) || res.statusText}`);

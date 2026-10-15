@@ -1,8 +1,12 @@
 import type { NextConfig } from "next";
 import path from "path";
 
+const monorepoRoot = process.cwd().endsWith("frontend")
+  ? path.resolve(process.cwd(), "..")
+  : process.cwd();
+
 const nextConfig: NextConfig = {
-  outputFileTracingRoot: path.join(process.cwd(), "../"),
+  outputFileTracingRoot: monorepoRoot,
   async rewrites() {
     return {
       beforeFiles: [],

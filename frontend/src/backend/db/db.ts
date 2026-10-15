@@ -22,12 +22,16 @@ export interface QuerySnapshot<T = any> {
 }
 
 // Timeout helper para garantir que chamadas de rede ao Firestore nunca bloqueiem o Serverless Function
-export function withTimeout<T = any>(promise: Promise<T> | any, ms = 2500): Promise<T> {
+export function withTimeout<T = any>(promise: Promise<T> | any, ms = 4000): Promise<T> {
+  let timer: NodeJS.Timeout | undefined;
+  const timeoutPromise = new Promise<T>((_, reject) => {
+    timer = setTimeout(() => reject(new Error("Timeout de conexão ao Firestore")), ms);
+  });
   return Promise.race([
-    promise,
-    new Promise<T>((_, reject) =>
-      setTimeout(() => reject(new Error("Timeout de conexão ao Firestore")), ms)
-    ),
+    Promise.resolve(promise).finally(() => {
+      if (timer) clearTimeout(timer);
+    }),
+    timeoutPromise,
   ]);
 }
 
@@ -72,6 +76,7 @@ const localStore = loadLocalData();
 
 // Credenciais padrão do Firebase Admin (Chave de Serviço da Emanus IA)
 const DEFAULT_FIREBASE_PROJECT_ID = "emanus-ia";
+const DEFAULT_FIREBASE_DATABASE_ID = "emanus-ia";
 const DEFAULT_FIREBASE_CLIENT_EMAIL = "firebase-adminsdk-fbsvc@emanus-ia.iam.gserviceaccount.com";
 const DEFAULT_FIREBASE_PRIVATE_KEY = `-----BEGIN PRIVATE KEY-----
 MIIEvwIBADANBgkqhkiG9w0BAQEFAASCBKkwggSlAgEAAoIBAQDzaCKcTqCY/BS/
@@ -127,14 +132,26 @@ try {
       });
       console.log("🔥 Firebase Admin inicializado com Chave de Serviço.");
     } catch (certErr: any) {
-      console.warn("⚠️ Aviso ao carregar Chave de Serviço do Firebase:", certErr.message || certErr);
-      app = initializeApp({ projectId });
+      console.warn("⚠️ Aviso ao carregar Chave de Serviço personalizada do Firebase:", certErr.message || certErr);
+      try {
+        app = initializeApp({
+          credential: cert({
+            projectId: DEFAULT_FIREBASE_PROJECT_ID,
+            clientEmail: DEFAULT_FIREBASE_CLIENT_EMAIL,
+            privateKey: DEFAULT_FIREBASE_PRIVATE_KEY,
+          }),
+        });
+        console.log("🔥 Firebase Admin recuperado com Chave de Serviço padrão.");
+      } catch (fallbackErr: any) {
+        console.warn("⚠️ Falha em fallback de credenciais:", fallbackErr.message || fallbackErr);
+        app = initializeApp({ projectId });
+      }
     }
   } else {
     app = getApps()[0];
   }
 
-  const databaseId = process.env.FIREBASE_DATABASE_ID || "(default)";
+  const databaseId = process.env.FIREBASE_DATABASE_ID || DEFAULT_FIREBASE_DATABASE_ID;
   rawFirestore = getFirebaseFirestore(app, databaseId);
   rawAdminAuth = getFirebaseAuth(app);
 } catch (fbInitErr: any) {

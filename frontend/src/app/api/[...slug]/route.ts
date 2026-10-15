@@ -3,8 +3,10 @@ import { getFastifyApp } from "@/backend/app";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const maxDuration = 60;
 
 async function handle(req: NextRequest): Promise<Response> {
+  let timeoutTimer: NodeJS.Timeout | undefined;
   try {
     const app = await getFastifyApp();
     const url = req.nextUrl.pathname + req.nextUrl.search;
@@ -35,7 +37,6 @@ async function handle(req: NextRequest): Promise<Response> {
       }
     }
 
-    // Proteção com timeout de 8 segundos para nunca estourar o limite da Vercel
     const injectPromise = app.inject({
       method: method as any,
       url,
@@ -43,11 +44,16 @@ async function handle(req: NextRequest): Promise<Response> {
       payload,
     });
 
-    const timeoutPromise = new Promise<never>((_, reject) =>
-      setTimeout(() => reject(new Error("Timeout de resposta da API")), 8000)
-    );
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      timeoutTimer = setTimeout(() => reject(new Error("Timeout de resposta da API")), 25000);
+    });
 
-    const res = await Promise.race([injectPromise, timeoutPromise]);
+    const res = await Promise.race([
+      injectPromise.finally(() => {
+        if (timeoutTimer) clearTimeout(timeoutTimer);
+      }),
+      timeoutPromise,
+    ]);
 
     const responseHeaders = new Headers();
     for (const [key, val] of Object.entries(res.headers)) {
