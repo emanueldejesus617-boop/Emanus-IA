@@ -22,11 +22,10 @@ export async function getFastifyApp(): Promise<FastifyInstance> {
 
     setupRoutes(server);
 
-    try {
-      await seedAdminUser();
-    } catch (e) {
+    // Semeia o utilizador admin em background sem bloquear o arranque do servidor
+    seedAdminUser().catch((e) => {
       console.warn("Aviso ao semear utilizador admin:", e);
-    }
+    });
 
     await server.ready();
     app = server;

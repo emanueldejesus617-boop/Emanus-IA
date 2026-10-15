@@ -12,8 +12,16 @@ async function handle(req: NextRequest): Promise<Response> {
 
     const headers: Record<string, string> = {};
     req.headers.forEach((val, key) => {
-      // Don't forward host or connection headers to avoid injection confusion
-      if (key !== "host" && key !== "connection") {
+      const lower = key.toLowerCase();
+      // Não repassar cabeçalhos de conexão ou tamanho que quebram o mock do Fastify inject
+      if (
+        lower !== "host" &&
+        lower !== "connection" &&
+        lower !== "content-length" &&
+        lower !== "transfer-encoding" &&
+        lower !== "content-encoding" &&
+        lower !== "accept-encoding"
+      ) {
         headers[key] = val;
       }
     });
@@ -27,20 +35,35 @@ async function handle(req: NextRequest): Promise<Response> {
       }
     }
 
-    const res = await app.inject({
+    // Proteção com timeout de 8 segundos para nunca estourar o limite da Vercel
+    const injectPromise = app.inject({
       method: method as any,
       url,
       headers,
       payload,
     });
 
+    const timeoutPromise = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error("Timeout de resposta da API")), 8000)
+    );
+
+    const res = await Promise.race([injectPromise, timeoutPromise]);
+
     const responseHeaders = new Headers();
     for (const [key, val] of Object.entries(res.headers)) {
       if (val !== undefined) {
-        if (Array.isArray(val)) {
-          val.forEach((v) => responseHeaders.append(key, v));
-        } else {
-          responseHeaders.set(key, String(val));
+        const lower = key.toLowerCase();
+        if (
+          lower !== "content-length" &&
+          lower !== "content-encoding" &&
+          lower !== "transfer-encoding" &&
+          lower !== "connection"
+        ) {
+          if (Array.isArray(val)) {
+            val.forEach((v) => responseHeaders.append(key, v));
+          } else {
+            responseHeaders.set(key, String(val));
+          }
         }
       }
     }

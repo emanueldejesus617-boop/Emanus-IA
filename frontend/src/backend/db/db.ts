@@ -6,6 +6,7 @@ import { getFirestore as getFirebaseFirestore } from 'firebase-admin/firestore';
 import { getAuth as getFirebaseAuth } from 'firebase-admin/auth';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+import initialLocalDb from '../data/db_local.json';
 
 export interface DocumentSnapshot<T = any> {
   id: string;
@@ -18,6 +19,16 @@ export interface QuerySnapshot<T = any> {
   empty: boolean;
   size: number;
   docs: Array<DocumentSnapshot<T>>;
+}
+
+// Timeout helper para garantir que chamadas de rede ao Firestore nunca bloqueiem o Serverless Function
+export function withTimeout<T = any>(promise: Promise<T> | any, ms = 2500): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((_, reject) =>
+      setTimeout(() => reject(new Error("Timeout de conexão ao Firestore")), ms)
+    ),
+  ]);
 }
 
 // Diretório e ficheiro para armazenamento persistente local (fallback)
@@ -33,15 +44,20 @@ try {
 }
 
 function loadLocalData(): Record<string, Record<string, any>> {
+  let data: Record<string, Record<string, any>> = {};
+  if (initialLocalDb && typeof initialLocalDb === 'object') {
+    data = JSON.parse(JSON.stringify(initialLocalDb));
+  }
   try {
     if (fs.existsSync(LOCAL_DB_PATH)) {
       const raw = fs.readFileSync(LOCAL_DB_PATH, 'utf-8');
-      return JSON.parse(raw);
+      const diskData = JSON.parse(raw);
+      data = { ...data, ...diskData };
     }
   } catch (e) {
     // Silencioso em fallback
   }
-  return {};
+  return data;
 }
 
 function saveLocalData(data: Record<string, Record<string, any>>) {
@@ -148,7 +164,7 @@ class HybridCollection {
         if (rawFirestore) {
           try {
             const docRef = rawFirestore.collection(self.colName).doc(docId);
-            const snap = await docRef.get();
+            const snap: any = await withTimeout(docRef.get(), 2000);
             if (snap.exists) {
               const data = snap.data();
               if (!localStore[self.colName]) localStore[self.colName] = {};
@@ -193,7 +209,7 @@ class HybridCollection {
 
         if (rawFirestore) {
           try {
-            await rawFirestore.collection(self.colName).doc(docId).set(data);
+            await withTimeout(rawFirestore.collection(self.colName).doc(docId).set(data), 2000);
           } catch (err) {}
         }
         return true;
@@ -207,7 +223,7 @@ class HybridCollection {
 
         if (rawFirestore) {
           try {
-            await rawFirestore.collection(self.colName).doc(docId).update(data);
+            await withTimeout(rawFirestore.collection(self.colName).doc(docId).update(data), 2000);
           } catch (err) {}
         }
         return true;
@@ -221,7 +237,7 @@ class HybridCollection {
 
         if (rawFirestore) {
           try {
-            await rawFirestore.collection(self.colName).doc(docId).delete();
+            await withTimeout(rawFirestore.collection(self.colName).doc(docId).delete(), 2000);
           } catch (err) {}
         }
         return true;
@@ -245,7 +261,7 @@ class HybridCollection {
         return queryObj;
       },
       async get(): Promise<QuerySnapshot> {
-        // Tentativa 1: Firestore Remoto
+        // Tentativa 1: Firestore Remoto com Timeout
         if (rawFirestore) {
           try {
             let ref = rawFirestore.collection(self.colName);
@@ -255,7 +271,7 @@ class HybridCollection {
             if (limitCount !== null) {
               ref = ref.limit(limitCount);
             }
-            const snap = await ref.get();
+            const snap: any = await withTimeout(ref.get(), 2500);
             if (!snap.empty) {
               snap.docs.forEach((d: any) => {
                 if (!localStore[self.colName]) localStore[self.colName] = {};
@@ -337,7 +353,7 @@ class HybridCollection {
   async get(): Promise<QuerySnapshot> {
     if (rawFirestore) {
       try {
-        const snap = await rawFirestore.collection(this.colName).get();
+        const snap: any = await withTimeout(rawFirestore.collection(this.colName).get(), 2500);
         if (!snap.empty) {
           snap.docs.forEach((d: any) => {
             if (!localStore[this.colName]) localStore[this.colName] = {};
