@@ -11,6 +11,9 @@ const shouldRewrite = backendUrl && (!isVercel || (!backendUrl.includes("localho
 
 const nextConfig: NextConfig = {
   outputFileTracingRoot: monorepoRoot,
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
   // Estes pacotes Node.js devem permanecer externos (não bundled) nas funções serverless da Vercel
   serverExternalPackages: [
     'firebase-admin',

@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 
 
 export async function POST(req: NextRequest) {
-  let geminiApiKey = (process.env.GEMINI_API_KEY || "").trim().replace(/^["']|["']$/g, "").trim();
+  const geminiApiKey = (process.env.GEMINI_API_KEY || "").trim().replace(/^["']|["']$/g, "").trim();
   if (!geminiApiKey) {
     return new Response(JSON.stringify({ error: "Serviço de IA não configurado. Contacta o suporte." }), {
       status: 503,
