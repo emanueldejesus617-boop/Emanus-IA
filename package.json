@@ -19,7 +19,7 @@
     "@types/jsonwebtoken": "^9.0.10",
     "bcryptjs": "^3.0.3",
     "fastify": "^5.8.5",
-    "firebase-admin": "^14.2.0",
+    "firebase-admin": "^12.7.0",
     "jsonwebtoken": "^9.0.3",
     "next": "15.5.15",
     "protobufjs": "^8.7.2",

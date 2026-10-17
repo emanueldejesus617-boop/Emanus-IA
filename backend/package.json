@@ -18,7 +18,7 @@
     "dotenv": "^16.6.1",
     "drizzle-orm": "^0.45.2",
     "fastify": "^5.8.5",
-    "firebase-admin": "^14.2.0",
+    "firebase-admin": "^12.7.0",
     "jsonwebtoken": "^9.0.3",
     "postgres": "^3.4.5",
     "protobufjs": "^8.7.2",
