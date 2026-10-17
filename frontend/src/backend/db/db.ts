@@ -1,9 +1,9 @@
 import path from 'path';
 import fs from 'fs';
 import os from 'os';
-import { initializeApp, getApps, cert } from 'firebase-admin/app';
-import { getFirestore as getFirebaseFirestore } from 'firebase-admin/firestore';
-import { getAuth as getFirebaseAuth } from 'firebase-admin/auth';
+import { initializeApp, getApps, cert, App } from 'firebase-admin/app';
+import { getFirestore as getFirebaseFirestore, Firestore } from 'firebase-admin/firestore';
+import { getAuth as getFirebaseAuth, Auth } from 'firebase-admin/auth';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import initialLocalDb from '../data/db_local.json';
@@ -74,11 +74,60 @@ function saveLocalData(data: Record<string, Record<string, any>>) {
 
 const localStore = loadLocalData();
 
-// Credenciais padrão do Firebase Admin (Chave de Serviço da Emanus IA)
-const DEFAULT_FIREBASE_PROJECT_ID = "emanus-ia";
-const DEFAULT_FIREBASE_DATABASE_ID = "emanus-ia";
-const DEFAULT_FIREBASE_CLIENT_EMAIL = "firebase-adminsdk-fbsvc@emanus-ia.iam.gserviceaccount.com";
-const DEFAULT_FIREBASE_PRIVATE_KEY = `-----BEGIN PRIVATE KEY-----
+// ================================================================
+// FIREBASE ADMIN CREDENTIALS
+// Prioridade:
+// 1. Arquivo de conta de serviço JSON (mais confiável)
+// 2. Variáveis de ambiente FIREBASE_*
+// 3. Valores padrão embutidos no código
+// ================================================================
+
+const SERVICE_ACCOUNT_PATH = path.resolve(process.cwd(), 'emanus-ia-firebase-adminsdk-fbsvc-0391f0822b.json');
+
+function getFirebaseCredential(): { projectId: string; clientEmail: string; privateKey: string } {
+  // Tenta carregar do arquivo JSON da conta de serviço (desenvolvimento local)
+  try {
+    if (fs.existsSync(SERVICE_ACCOUNT_PATH)) {
+      const svcAccount = JSON.parse(fs.readFileSync(SERVICE_ACCOUNT_PATH, 'utf-8'));
+      if (svcAccount.private_key && svcAccount.client_email && svcAccount.project_id) {
+        console.log('🔑 Usando credenciais do arquivo de conta de serviço JSON.');
+        return {
+          projectId: svcAccount.project_id,
+          clientEmail: svcAccount.client_email,
+          privateKey: svcAccount.private_key,
+        };
+      }
+    }
+  } catch (e) {
+    // Continua para próxima opção
+  }
+
+  // Usa variáveis de ambiente (produção / Vercel)
+  const projectId = process.env.FIREBASE_PROJECT_ID || process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || 'emanus-ia';
+  const clientEmail = process.env.FIREBASE_CLIENT_EMAIL || 'firebase-adminsdk-fbsvc@emanus-ia.iam.gserviceaccount.com';
+  let privateKey = process.env.FIREBASE_PRIVATE_KEY || '';
+
+  if (privateKey) {
+    // Normaliza a chave: remove aspas externas, substitui \n literal por newline real
+    privateKey = privateKey
+      .trim()
+      .replace(/^["']+|["']+$/g, '')
+      .replace(/\\r/g, '')
+      .replace(/\\n/g, '\n');
+
+    // Verifica se a chave tem o formato correto
+    if (privateKey.includes('-----BEGIN PRIVATE KEY-----') && privateKey.includes('-----END PRIVATE KEY-----')) {
+      console.log('🔑 Usando credenciais das variáveis de ambiente.');
+      return { projectId, clientEmail, privateKey };
+    }
+  }
+
+  // Fallback: chave embutida diretamente do arquivo JSON (evita problemas de formatação do .env)
+  console.warn('⚠️ Usando credenciais embutidas como último fallback.');
+  return {
+    projectId: 'emanus-ia',
+    clientEmail: 'firebase-adminsdk-fbsvc@emanus-ia.iam.gserviceaccount.com',
+    privateKey: `-----BEGIN PRIVATE KEY-----
 MIIEvwIBADANBgkqhkiG9w0BAQEFAASCBKkwggSlAgEAAoIBAQDzaCKcTqCY/BS/
 2/aucJ/01VKN2ynY43BC7j/qXD/SpAPe1a4Q/hWzeZd8HuJyEKcgP9NljMvGaO0/
 UOp5+Kx4VyETR9PWpnVNKV4oS9Kbt84nu/5wLubJbuOOo2qG0jq2qD0D5uz5v0x9
@@ -105,53 +154,37 @@ Tndkyd7+HhEalPOJUjsotAe/LVD+M878xkF3aAWnRcVMIo0/XXcqPDbAUL/WvZbf
 UA56Rj6IMa8fdFhvtdLJtsHp+bo6CZtVOCWAd/FY/pmkjl8jO0AxgHblljboqhe0
 eEq4SQ7mN4BdH1GEo+OyTZLWrDxIw24N5c+tk7ZcKvzCH/CFLqm8SMco2bxPQNky
 XuAuqsUFyB3EL9OdIBnkUkuWGg==
------END PRIVATE KEY-----`;
+-----END PRIVATE KEY-----`,
+  };
+}
 
 // Inicialização do Firebase Admin SDK
-let app: any = null;
-let rawFirestore: any = null;
-let rawAdminAuth: any = null;
+let app: App | null = null;
+let rawFirestore: Firestore | null = null;
+let rawAdminAuth: Auth | null = null;
 
 try {
   if (getApps().length === 0) {
-    const projectId = process.env.FIREBASE_PROJECT_ID || process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || DEFAULT_FIREBASE_PROJECT_ID;
-    const clientEmail = process.env.FIREBASE_CLIENT_EMAIL || DEFAULT_FIREBASE_CLIENT_EMAIL;
-    let privateKey = process.env.FIREBASE_PRIVATE_KEY || DEFAULT_FIREBASE_PRIVATE_KEY;
-
-    if (privateKey) {
-      privateKey = privateKey.trim().replace(/^["']+|["']+$/g, '').replace(/\r/g, '').replace(/\\n/g, '\n');
-    }
-
+    const creds = getFirebaseCredential();
     try {
       app = initializeApp({
         credential: cert({
-          projectId,
-          clientEmail,
-          privateKey,
+          projectId: creds.projectId,
+          clientEmail: creds.clientEmail,
+          privateKey: creds.privateKey,
         }),
       });
-      console.log("🔥 Firebase Admin inicializado com Chave de Serviço.");
+      console.log('🔥 Firebase Admin inicializado com sucesso.');
     } catch (certErr: any) {
-      console.warn("⚠️ Aviso ao carregar Chave de Serviço personalizada do Firebase:", certErr.message || certErr);
-      try {
-        app = initializeApp({
-          credential: cert({
-            projectId: DEFAULT_FIREBASE_PROJECT_ID,
-            clientEmail: DEFAULT_FIREBASE_CLIENT_EMAIL,
-            privateKey: DEFAULT_FIREBASE_PRIVATE_KEY,
-          }),
-        });
-        console.log("🔥 Firebase Admin recuperado com Chave de Serviço padrão.");
-      } catch (fallbackErr: any) {
-        console.warn("⚠️ Falha em fallback de credenciais:", fallbackErr.message || fallbackErr);
-        app = initializeApp({ projectId });
-      }
+      console.error('❌ Falha ao inicializar Firebase Admin:', certErr.message || certErr);
+      // Último recurso: inicializar sem credenciais (só funciona com Application Default Credentials)
+      app = initializeApp({ projectId: creds.projectId });
     }
   } else {
     app = getApps()[0];
   }
 
-  const databaseId = process.env.FIREBASE_DATABASE_ID || DEFAULT_FIREBASE_DATABASE_ID;
+  const databaseId = process.env.FIREBASE_DATABASE_ID || 'emanus-ia';
   rawFirestore = getFirebaseFirestore(app, databaseId);
   try {
     rawFirestore.settings({ preferRest: true });
@@ -159,8 +192,9 @@ try {
     // Silencioso se settings já estiver configurado
   }
   rawAdminAuth = getFirebaseAuth(app);
+  console.log('✅ Firestore e Auth inicializados. DatabaseId:', databaseId);
 } catch (fbInitErr: any) {
-  console.warn("⚠️ Firebase Admin em modo híbrido local:", fbInitErr.message);
+  console.error('❌ Falha crítica ao inicializar Firebase:', fbInitErr.message);
 }
 
 // Wrapper Híbrido Resiliente para o Firestore
@@ -195,7 +229,7 @@ class HybridCollection {
               return { exists: true, id: docId, data: () => data, ref: docRef };
             }
           } catch (err: any) {
-            // Se falhar no Firestore, utiliza persistência local
+            console.warn('[Firestore] Falha ao obter documento:', err.message);
           }
         }
 
@@ -232,7 +266,9 @@ class HybridCollection {
         if (rawFirestore) {
           try {
             await withTimeout(rawFirestore.collection(self.colName).doc(docId).set(data), 10000);
-          } catch (err) {}
+          } catch (err: any) {
+            console.warn('[Firestore] Falha ao gravar documento:', err.message);
+          }
         }
         return true;
       },
@@ -246,7 +282,9 @@ class HybridCollection {
         if (rawFirestore) {
           try {
             await withTimeout(rawFirestore.collection(self.colName).doc(docId).update(data), 10000);
-          } catch (err) {}
+          } catch (err: any) {
+            console.warn('[Firestore] Falha ao atualizar documento:', err.message);
+          }
         }
         return true;
       },
@@ -260,7 +298,9 @@ class HybridCollection {
         if (rawFirestore) {
           try {
             await withTimeout(rawFirestore.collection(self.colName).doc(docId).delete(), 10000);
-          } catch (err) {}
+          } catch (err: any) {
+            console.warn('[Firestore] Falha ao eliminar documento:', err.message);
+          }
         }
         return true;
       }
@@ -286,7 +326,7 @@ class HybridCollection {
         // Tentativa 1: Firestore Remoto com Timeout
         if (rawFirestore) {
           try {
-            let ref = rawFirestore.collection(self.colName);
+            let ref: any = rawFirestore.collection(self.colName);
             for (const f of filters) {
               ref = ref.where(f.field, f.op, f.val);
             }
@@ -311,7 +351,9 @@ class HybridCollection {
                 }))
               };
             }
-          } catch (err) {}
+          } catch (err: any) {
+            console.warn('[Firestore] Falha na query:', err.message);
+          }
         }
 
         // Tentativa 2: Consulta em Memória/Disco Local
@@ -321,7 +363,7 @@ class HybridCollection {
         for (const [id, item] of Object.entries(col)) {
           let satisfies = true;
           for (const f of filters) {
-            const itemVal = item[f.field];
+            const itemVal = (item as any)[f.field];
             if (f.op === '==' || f.op === '===') {
               if (typeof itemVal === 'string' && typeof f.val === 'string') {
                 if (itemVal.toLowerCase() !== f.val.toLowerCase()) {
@@ -393,7 +435,9 @@ class HybridCollection {
             }))
           };
         }
-      } catch (err) {}
+      } catch (err: any) {
+        console.warn('[Firestore] Falha ao listar coleção:', err.message);
+      }
     }
 
     const col = localStore[this.colName] || {};
