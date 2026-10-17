@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 
 
 export async function POST(req: NextRequest) {
-  const geminiApiKey = process.env.GEMINI_API_KEY;
+  let geminiApiKey = (process.env.GEMINI_API_KEY || "").trim().replace(/^["']|["']$/g, "").trim();
   if (!geminiApiKey) {
     return new Response(JSON.stringify({ error: "Serviço de IA não configurado. Contacta o suporte." }), {
       status: 503,
@@ -103,7 +103,8 @@ export async function POST(req: NextRequest) {
 
     // Configurar modelo Gemini
     const ai = new GoogleGenerativeAI(geminiApiKey);
-    const modelName = process.env.GEMINI_MODEL || "gemini-2.5-flash";
+    const rawModel = process.env.GEMINI_MODEL || "gemini-2.5-flash";
+    const modelName = rawModel.trim().replace(/^["']|["']$/g, "").trim() || "gemini-2.5-flash";
 
     const model = ai.getGenerativeModel({
       model: modelName,

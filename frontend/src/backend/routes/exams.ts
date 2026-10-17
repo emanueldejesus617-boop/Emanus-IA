@@ -24,7 +24,9 @@ const GradeExamSchema = z.object({
 });
 
 export async function examsRoutes(fastify: FastifyInstance) {
-  const ai = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
+  const rawKey = process.env.GEMINI_API_KEY || "";
+  const apiKey = rawKey.trim().replace(/^["']|["']$/g, "").trim();
+  const ai = new GoogleGenerativeAI(apiKey);
 
   // POST /generate - Generate 5 multiple-choice questions ONLY from completed lesson topics
   fastify.post("/generate", async (request, reply) => {

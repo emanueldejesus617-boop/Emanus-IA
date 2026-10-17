@@ -170,7 +170,8 @@ REGRAS:
   }
 }
 export async function aiRoutes(fastify: FastifyInstance) {
-  const apiKey = process.env.GEMINI_API_KEY || "";
+  const rawKey = process.env.GEMINI_API_KEY || "";
+  const apiKey = rawKey.trim().replace(/^["']|["']$/g, "").trim();
   const ai = new GoogleGenerativeAI(apiKey);
   
   fastify.post("/chat", async (request, reply) => {

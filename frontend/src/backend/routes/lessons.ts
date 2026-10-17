@@ -25,7 +25,9 @@ const SaveProgramSchema = z.object({
 });
 
 export async function lessonsRoutes(fastify: FastifyInstance) {
-  const ai = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
+  const rawKey = process.env.GEMINI_API_KEY || "";
+  const apiKey = rawKey.trim().replace(/^["']|["']$/g, "").trim();
+  const ai = new GoogleGenerativeAI(apiKey);
 
   // GET /programs - Get all quarterly programs for authenticated user
   fastify.get("/programs", async (request, reply) => {
