@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { firestore, adminAuth } from "@/backend/db/db";
 import { normalizeEmail, signToken } from "@/backend/utils/security";
-import { findUserByEmailOrId, LoginSchema } from "@/backend/routes/auth";
+import { findUserByEmailOrId, LoginSchema } from "@/backend/authHelper";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";

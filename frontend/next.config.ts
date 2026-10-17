@@ -14,14 +14,8 @@ const nextConfig: NextConfig = {
   // Estes pacotes Node.js devem permanecer externos (não bundled) nas funções serverless da Vercel
   serverExternalPackages: [
     'firebase-admin',
-    'firebase-admin/app',
-    'firebase-admin/firestore',
-    'firebase-admin/auth',
     'fastify',
     '@fastify/cors',
-    'bcryptjs',
-    'jsonwebtoken',
-    'dotenv',
   ],
   async rewrites() {
     return {

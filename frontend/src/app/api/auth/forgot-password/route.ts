@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { normalizeEmail } from "@/backend/utils/security";
 import { adminAuth } from "@/backend/db/db";
-import { findUserByEmailOrId } from "@/backend/routes/auth";
+import { findUserByEmailOrId } from "@/backend/authHelper";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";

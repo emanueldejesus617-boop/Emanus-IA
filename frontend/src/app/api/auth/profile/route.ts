@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { firestore, adminAuth } from "@/backend/db/db";
 import { normalizeEmail, verifyToken } from "@/backend/utils/security";
-import { findUserByEmailOrId, ProfileSchema, EditProfileSchema } from "@/backend/routes/auth";
+import { findUserByEmailOrId, ProfileSchema, EditProfileSchema } from "@/backend/authHelper";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
