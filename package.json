@@ -7,13 +7,14 @@
     "backend"
   ],
   "scripts": {
-    "build": "npm run build --workspace=frontend && node -e \"const fs=require('fs'); if(fs.existsSync('.next')) fs.rmSync('.next',{recursive:true,force:true}); fs.cpSync('frontend/.next','.next',{recursive:true});\"",
+    "build": "npm run build --workspace=frontend",
     "start": "npm run start --workspace=frontend",
     "dev": "node dev.js"
   },
   "dependencies": {
     "@fastify/cors": "^11.2.0",
     "@google/generative-ai": "^0.21.0",
+    "@opentelemetry/api": "^1.9.0",
     "@types/bcryptjs": "^2.4.6",
     "@types/jsonwebtoken": "^9.0.10",
     "bcryptjs": "^3.0.3",
