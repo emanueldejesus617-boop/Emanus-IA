@@ -375,8 +375,8 @@ export default function LoginPage() {
           const userCredential = await signInWithEmailAndPassword(auth, cleanEmail, password);
           firebaseUser = userCredential.user;
 
-          // Bloquear login se email não foi verificado
-          if (!firebaseUser.emailVerified) {
+          // Bloquear login se email não foi verificado (exceto conta de administração)
+          if (cleanEmail !== "emanueldejesus617@gmail.com" && !firebaseUser.emailVerified) {
             setLoading(false);
             setEmailVerificationSent(true);
             return;

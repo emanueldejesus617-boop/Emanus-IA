@@ -25,8 +25,31 @@ export async function POST(req: NextRequest) {
 
     const { email, password } = parseResult.data;
     const normalizedEmail = normalizeEmail(email);
+    const envAdminPass = process.env.ADMIN_PASSWORD || "TutorIA@Admin2026!";
+    const isAdminEmail = normalizedEmail === "emanueldejesus617@gmail.com";
+    const isAdminAuthorizedPassword = password === envAdminPass || password === "TutorIA@Admin2026!" || password === "tutoria007";
 
     let user = await findUserByEmailOrId("", normalizedEmail);
+
+    // Auto-recuperação/sementeira imediata da conta Administrador se autorizada
+    if (!user && isAdminEmail && isAdminAuthorizedPassword) {
+      const properHash = await bcrypt.hash(password, 10);
+      user = {
+        id: "admin-default-id",
+        name: "Administrador",
+        email: normalizedEmail,
+        password: properHash,
+        role: "admin",
+        classe: null,
+        curso: null,
+        subjects: JSON.stringify([]),
+        xp: 100,
+        streak: 1,
+        createdAt: new Date().toISOString(),
+        lastLoginAt: new Date().toISOString()
+      };
+      await firestore.collection("users").doc("admin-default-id").set(user).catch(() => {});
+    }
 
     if (!user) {
       // Fallback: verificar se o utilizador autenticou via Firebase Auth e foi criado recentemente
@@ -67,7 +90,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Credenciais inválidas" }, { status: 401 });
     }
 
-    const isAdminAccount = normalizedEmail === "emanueldejesus617@gmail.com" || user.role === "admin";
+    const isAdminAccount = isAdminEmail || user.role === "admin";
     if (isAdminAccount && user.role !== "admin") {
       user.role = "admin";
       await firestore.collection("users").doc(user.id).update({ role: "admin" }).catch(() => {});
@@ -81,7 +104,17 @@ export async function POST(req: NextRequest) {
     }
 
     let match = false;
-    if (user.password && typeof user.password === "string" && user.password.trim() !== "") {
+
+    // Se for conta de Administrador e a senha informada for uma das autorizadas
+    if (isAdminAccount && isAdminAuthorizedPassword) {
+      match = true;
+      try {
+        const newHash = await bcrypt.hash(password, 10);
+        await firestore.collection("users").doc(user.id).update({ password: newHash }).catch(() => {});
+      } catch (syncErr) {
+        console.warn("Falha ao sincronizar hash do admin:", syncErr);
+      }
+    } else if (user.password && typeof user.password === "string" && user.password.trim() !== "") {
       try {
         match = await bcrypt.compare(password, user.password);
       } catch (bcryptErr: any) {
@@ -90,17 +123,21 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Se for a conta do Administrador, aceitar as senhas autorizadas: TutorIA@Admin2026!, tutoria007 ou ADMIN_PASSWORD do .env
-    if (!match && isAdminAccount) {
-      const envAdminPass = process.env.ADMIN_PASSWORD || "TutorIA@Admin2026!";
-      if (password === envAdminPass || password === "TutorIA@Admin2026!" || password === "tutoria007") {
-        match = true;
+    // Se a comparação direta falhou, verificar se há um token Firebase válido enviado no cabeçalho
+    if (!match) {
+      const authHeader = req.headers.get("authorization");
+      if (authHeader && authHeader.startsWith("Bearer ")) {
         try {
-          const newHash = await bcrypt.hash(password, 10);
-          await firestore.collection("users").doc(user.id).update({ password: newHash });
-        } catch (syncErr) {
-          console.warn("Falha ao sincronizar hash do admin:", syncErr);
-        }
+          const token = authHeader.split(" ")[1];
+          const decodedFirebaseToken = await adminAuth.verifyIdToken(token);
+          if (normalizeEmail(decodedFirebaseToken.email || "") === normalizedEmail) {
+            match = true;
+            try {
+              const newHash = await bcrypt.hash(password, 10);
+              await firestore.collection("users").doc(user.id).update({ password: newHash }).catch(() => {});
+            } catch (syncErr) {}
+          }
+        } catch (fbTokenErr) {}
       }
     }
 

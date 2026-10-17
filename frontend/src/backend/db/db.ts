@@ -22,7 +22,7 @@ export interface QuerySnapshot<T = any> {
 }
 
 // Timeout helper para garantir que chamadas de rede ao Firestore nunca bloqueiem o Serverless Function
-export function withTimeout<T = any>(promise: Promise<T> | any, ms = 4000): Promise<T> {
+export function withTimeout<T = any>(promise: Promise<T> | any, ms = 12000): Promise<T> {
   let timer: NodeJS.Timeout | undefined;
   const timeoutPromise = new Promise<T>((_, reject) => {
     timer = setTimeout(() => reject(new Error("Timeout de conexão ao Firestore")), ms);
@@ -153,6 +153,11 @@ try {
 
   const databaseId = process.env.FIREBASE_DATABASE_ID || DEFAULT_FIREBASE_DATABASE_ID;
   rawFirestore = getFirebaseFirestore(app, databaseId);
+  try {
+    rawFirestore.settings({ preferRest: true });
+  } catch (settingsErr) {
+    // Silencioso se settings já estiver configurado
+  }
   rawAdminAuth = getFirebaseAuth(app);
 } catch (fbInitErr: any) {
   console.warn("⚠️ Firebase Admin em modo híbrido local:", fbInitErr.message);
@@ -181,7 +186,7 @@ class HybridCollection {
         if (rawFirestore) {
           try {
             const docRef = rawFirestore.collection(self.colName).doc(docId);
-            const snap: any = await withTimeout(docRef.get(), 2000);
+            const snap: any = await withTimeout(docRef.get(), 10000);
             if (snap.exists) {
               const data = snap.data();
               if (!localStore[self.colName]) localStore[self.colName] = {};
@@ -226,7 +231,7 @@ class HybridCollection {
 
         if (rawFirestore) {
           try {
-            await withTimeout(rawFirestore.collection(self.colName).doc(docId).set(data), 2000);
+            await withTimeout(rawFirestore.collection(self.colName).doc(docId).set(data), 10000);
           } catch (err) {}
         }
         return true;
@@ -240,7 +245,7 @@ class HybridCollection {
 
         if (rawFirestore) {
           try {
-            await withTimeout(rawFirestore.collection(self.colName).doc(docId).update(data), 2000);
+            await withTimeout(rawFirestore.collection(self.colName).doc(docId).update(data), 10000);
           } catch (err) {}
         }
         return true;
@@ -254,7 +259,7 @@ class HybridCollection {
 
         if (rawFirestore) {
           try {
-            await withTimeout(rawFirestore.collection(self.colName).doc(docId).delete(), 2000);
+            await withTimeout(rawFirestore.collection(self.colName).doc(docId).delete(), 10000);
           } catch (err) {}
         }
         return true;
@@ -288,7 +293,7 @@ class HybridCollection {
             if (limitCount !== null) {
               ref = ref.limit(limitCount);
             }
-            const snap: any = await withTimeout(ref.get(), 2500);
+            const snap: any = await withTimeout(ref.get(), 10000);
             if (!snap.empty) {
               snap.docs.forEach((d: any) => {
                 if (!localStore[self.colName]) localStore[self.colName] = {};
@@ -370,7 +375,7 @@ class HybridCollection {
   async get(): Promise<QuerySnapshot> {
     if (rawFirestore) {
       try {
-        const snap: any = await withTimeout(rawFirestore.collection(this.colName).get(), 2500);
+        const snap: any = await withTimeout(rawFirestore.collection(this.colName).get(), 10000);
         if (!snap.empty) {
           snap.docs.forEach((d: any) => {
             if (!localStore[this.colName]) localStore[this.colName] = {};

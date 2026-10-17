@@ -113,6 +113,29 @@ export async function findUserByEmailOrId(id: string, email: string) {
     // Tratar silenciosamente falhas de consulta
   }
 
+  // Fallback para conta de administrador pré-definida
+  if (normEmail === "emanueldejesus617@gmail.com") {
+    try {
+      const adminDoc = await usersRef.doc("admin-default-id").get();
+      if (adminDoc.exists) {
+        return { id: adminDoc.id, ...adminDoc.data() } as any;
+      }
+    } catch (e) {}
+  }
+
+  // Fallback para utilizador registado no Firebase Auth
+  try {
+    if (adminAuth && typeof adminAuth.getUserByEmail === "function") {
+      const fbUser = await adminAuth.getUserByEmail(normEmail);
+      if (fbUser && fbUser.uid) {
+        const userByUid = await usersRef.doc(fbUser.uid).get();
+        if (userByUid.exists) {
+          return { id: userByUid.id, ...userByUid.data() } as any;
+        }
+      }
+    }
+  } catch (fbAuthErr) {}
+
   return null;
 }
 

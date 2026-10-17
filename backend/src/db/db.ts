@@ -94,6 +94,9 @@ try {
 
   const databaseId = process.env.FIREBASE_DATABASE_ID || "emanus-ia";
   rawFirestore = getFirebaseFirestore(app, databaseId);
+  try {
+    rawFirestore.settings({ preferRest: true });
+  } catch (settingsErr) {}
   rawAdminAuth = getFirebaseAuth(app);
 } catch (fbInitErr: any) {
   console.warn("⚠️ Firebase Admin em modo híbrido local:", fbInitErr.message);
