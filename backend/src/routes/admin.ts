@@ -1,6 +1,6 @@
 import { FastifyInstance } from "fastify";
 import { z } from "zod";
-import { firestore } from "../db/db";
+import { firestore, adminAuth } from "../db/db";
 import { authenticateUser } from "./auth";
 
 export async function adminRoutes(fastify: FastifyInstance) {
@@ -53,31 +53,32 @@ export async function adminRoutes(fastify: FastifyInstance) {
     }
   });
 
-  // GET /users - List of students
+  // GET /users - List of students (inclui todas as contas recém-criadas sem perda)
   fastify.get("/users", async (request, reply) => {
     const admin = await authorizeAdmin(request, reply);
     if (!admin) return;
 
     try {
-      const snapshot = await firestore
-        .collection("users")
-        .where("role", "==", "student")
-        .get();
+      // Usa get() completo para garantir merge com contas locais recém-criadas
+      const snapshot = await firestore.collection("users").get();
 
-      const students = snapshot.docs.map(doc => {
-        const u = doc.data() as any;
-        return {
-          id: doc.id,
-          name: u.name,
-          email: u.email,
-          classe: u.classe,
-          curso: u.curso,
-          xp: u.xp || 0,
-          streak: u.streak || 0,
-          createdAt: u.createdAt,
-          lastLoginAt: u.lastLoginAt
-        };
-      });
+      const students = snapshot.docs
+        .map(doc => {
+          const u = doc.data() as any;
+          return {
+            id: doc.id,
+            name: u.name || "Sem nome",
+            email: u.email || "",
+            role: u.role || "student",
+            classe: u.classe || null,
+            curso: u.curso || null,
+            xp: u.xp || 0,
+            streak: u.streak || 0,
+            createdAt: u.createdAt || new Date().toISOString(),
+            lastLoginAt: u.lastLoginAt || null
+          };
+        })
+        .filter((u: any) => u.role !== "admin" && u.email !== "emanueldejesus617@gmail.com");
 
       students.sort((a, b) => (b.xp || 0) - (a.xp || 0));
 
@@ -85,6 +86,36 @@ export async function adminRoutes(fastify: FastifyInstance) {
     } catch (e: any) {
       fastify.log.error(e);
       return reply.status(500).send({ error: "Erro ao obter lista de utilizadores" });
+    }
+  });
+
+  // DELETE /users/:id - Excluir conta de utilizador
+  fastify.delete("/users/:id", async (request, reply) => {
+    const admin = await authorizeAdmin(request, reply);
+    if (!admin) return;
+
+    try {
+      const { id } = z.object({ id: z.string() }).parse(request.params);
+
+      // Proteção: não permitir excluir conta de admin
+      const userDoc = await firestore.collection("users").doc(id).get();
+      if (userDoc.exists) {
+        const userData = userDoc.data() as any;
+        if (userData?.email === "emanueldejesus617@gmail.com" || userData?.role === "admin") {
+          return reply.status(400).send({ error: "Não é permitido excluir a conta de administrador." });
+        }
+      }
+
+      // 1. Elimina da coleção de utilizadores
+      await firestore.collection("users").doc(id).delete();
+
+      // 2. Tenta eliminar do Firebase Authentication
+      await adminAuth.deleteUser(id).catch(() => {});
+
+      return { success: true, message: "Conta excluída com sucesso." };
+    } catch (e: any) {
+      fastify.log.error(e);
+      return reply.status(500).send({ error: "Erro ao excluir conta." });
     }
   });
 

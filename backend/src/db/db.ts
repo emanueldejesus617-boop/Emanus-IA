@@ -224,6 +224,8 @@ class HybridCollection {
         return queryObj;
       },
       async get(): Promise<QuerySnapshot> {
+        const mergedDocsMap = new Map<string, { id: string; exists: boolean; data: () => any; ref: any }>();
+
         // Tentativa 1: Firestore Remoto
         if (rawFirestore) {
           try {
@@ -235,31 +237,27 @@ class HybridCollection {
               ref = ref.limit(limitCount);
             }
             const snap = await ref.get();
-            if (!snap.empty) {
+            if (snap && snap.docs) {
+              if (!localStore[self.colName]) localStore[self.colName] = {};
               snap.docs.forEach((d: any) => {
-                localStore[self.colName][d.id] = d.data();
-              });
-              saveLocalData(localStore);
-              return {
-                empty: false,
-                size: snap.size,
-                docs: snap.docs.map((d: any) => ({
+                const data = d.data();
+                localStore[self.colName][d.id] = data;
+                mergedDocsMap.set(d.id, {
                   id: d.id,
                   exists: true,
-                  data: () => d.data(),
+                  data: () => data,
                   ref: d.ref
-                }))
-              };
+                });
+              });
+              saveLocalData(localStore);
             }
           } catch (err) {
             // Fallback para local
           }
         }
 
-        // Tentativa 2: Consulta em Memória/Disco Local
+        // Tentativa 2 / Merge: Consulta em Memória/Disco Local
         const col = localStore[self.colName] || {};
-        const matches: any[] = [];
-
         for (const [id, item] of Object.entries(col)) {
           let satisfies = true;
           for (const f of filters) {
@@ -287,21 +285,28 @@ class HybridCollection {
             }
           }
           if (satisfies) {
-            matches.push({
-              id,
-              exists: true,
-              data: () => item,
-              ref: {
-                delete: async () => {
-                  delete localStore[self.colName][id];
-                  saveLocalData(localStore);
+            if (!mergedDocsMap.has(id)) {
+              mergedDocsMap.set(id, {
+                id,
+                exists: true,
+                data: () => item,
+                ref: {
+                  delete: async () => {
+                    delete localStore[self.colName][id];
+                    saveLocalData(localStore);
+                  }
                 }
+              });
+
+              if (rawFirestore) {
+                rawFirestore.collection(self.colName).doc(id).set(item).catch(() => {});
               }
-            });
+            }
           }
         }
 
-        const resultDocs = limitCount !== null ? matches.slice(0, limitCount) : matches;
+        const allDocs = Array.from(mergedDocsMap.values());
+        const resultDocs = limitCount !== null ? allDocs.slice(0, limitCount) : allDocs;
 
         return {
           empty: resultDocs.length === 0,
@@ -315,40 +320,50 @@ class HybridCollection {
   }
 
   async get(): Promise<QuerySnapshot> {
+    const mergedDocsMap = new Map<string, { id: string; exists: boolean; data: () => any; ref: any }>();
+
     if (rawFirestore) {
       try {
         const snap = await rawFirestore.collection(this.colName).get();
-        if (!snap.empty) {
+        if (snap && snap.docs) {
+          if (!localStore[this.colName]) localStore[this.colName] = {};
           snap.docs.forEach((d: any) => {
-            localStore[this.colName][d.id] = d.data();
-          });
-          saveLocalData(localStore);
-          return {
-            empty: false,
-            size: snap.size,
-            docs: snap.docs.map((d: any) => ({
+            const data = d.data();
+            localStore[this.colName][d.id] = data;
+            mergedDocsMap.set(d.id, {
               id: d.id,
               exists: true,
-              data: () => d.data(),
+              data: () => data,
               ref: d.ref
-            }))
-          };
+            });
+          });
+          saveLocalData(localStore);
         }
       } catch (err) {}
     }
 
     const col = localStore[this.colName] || {};
-    const docs = Object.entries(col).map(([id, data]) => ({
-      id,
-      exists: true,
-      data: () => data,
-      ref: {
-        delete: async () => {
-          delete localStore[this.colName][id];
-          saveLocalData(localStore);
+    for (const [id, data] of Object.entries(col)) {
+      if (!mergedDocsMap.has(id)) {
+        mergedDocsMap.set(id, {
+          id,
+          exists: true,
+          data: () => data,
+          ref: {
+            delete: async () => {
+              delete localStore[this.colName][id];
+              saveLocalData(localStore);
+            }
+          }
+        });
+
+        if (rawFirestore) {
+          rawFirestore.collection(this.colName).doc(id).set(data).catch(() => {});
         }
       }
-    }));
+    }
+
+    const docs = Array.from(mergedDocsMap.values());
 
     return {
       empty: docs.length === 0,
@@ -435,6 +450,17 @@ export const adminAuth = {
       return await rawAdminAuth.generatePasswordResetLink(email);
     }
     return null;
+  },
+  async deleteUser(uid: string): Promise<boolean> {
+    if (rawAdminAuth && typeof rawAdminAuth.deleteUser === 'function') {
+      try {
+        await rawAdminAuth.deleteUser(uid);
+        return true;
+      } catch (e) {
+        return false;
+      }
+    }
+    return false;
   }
 };
 

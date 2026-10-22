@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { AlertTriangle, Shield, Users, Zap, FileText, BookOpen, Flame, Bug, CheckCircle2, XCircle, RefreshCw } from "lucide-react";
+import { AlertTriangle, Shield, Users, Zap, FileText, BookOpen, Flame, Bug, CheckCircle2, XCircle, RefreshCw, Trash2 } from "lucide-react";
 
 type Stats = {
   totalStudents: number;
@@ -48,6 +48,8 @@ export default function AdminPage() {
   const [error, setError] = useState("");
   const [activeTab, setActiveTab] = useState<"students" | "errors">("students");
   const [resolvingId, setResolvingId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   const loadAdminData = async () => {
     const token = localStorage.getItem("token");
@@ -116,6 +118,26 @@ export default function AdminPage() {
       }
     } catch {}
     finally { setResolvingId(null); }
+  };
+
+  const handleDeleteUser = async (id: string) => {
+    const token = localStorage.getItem("token");
+    if (!token) return;
+    setDeletingId(id);
+    try {
+      const res = await fetch(`/api/admin/users/${id}`, {
+        method: "DELETE",
+        headers: { "Authorization": `Bearer ${token}` }
+      });
+      if (res.ok) {
+        setUsers(prev => prev.filter(u => u.id !== id));
+        setStats(prev => prev ? { ...prev, totalStudents: Math.max(0, (prev.totalStudents || 1) - 1) } : prev);
+      }
+    } catch {}
+    finally {
+      setDeletingId(null);
+      setConfirmDeleteId(null);
+    }
   };
 
   // Filter users based on search query and class filter
@@ -301,6 +323,7 @@ export default function AdminPage() {
                         <th className="p-4 border-b border-muted/10">Estudos (Streak)</th>
                         <th className="p-4 border-b border-muted/10">Último Acesso</th>
                         <th className="p-4 border-b border-muted/10">Data de Registo</th>
+                        <th className="p-4 border-b border-muted/10 text-right">Ações</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-muted/10">
@@ -348,6 +371,16 @@ export default function AdminPage() {
                           <td className="p-4 text-muted">
                             {new Date(u.createdAt).toLocaleDateString("pt-PT")}
                           </td>
+                          <td className="p-4 text-right">
+                            <button
+                              onClick={() => setConfirmDeleteId(u.id)}
+                              title="Excluir conta de utilizador"
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-danger/25 text-danger hover:bg-danger/10 hover:border-danger/50 transition-colors cursor-pointer text-[11px] font-semibold"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                              <span>Excluir</span>
+                            </button>
+                          </td>
                         </tr>
                       ))}
                     </tbody>
@@ -356,6 +389,47 @@ export default function AdminPage() {
               )}
             </div>
           )}
+
+          {/* Modal de Confirmação de Exclusão */}
+          {confirmDeleteId && (() => {
+            const targetUser = users.find(u => u.id === confirmDeleteId);
+            return (
+              <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                <div className="bg-surface border border-danger/20 rounded-2xl p-6 max-w-sm w-full shadow-2xl">
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="h-10 w-10 rounded-full bg-danger/10 flex items-center justify-center">
+                      <Trash2 className="w-5 h-5 text-danger" />
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-text text-sm">Excluir Conta</h3>
+                      <p className="text-[10px] text-muted">Esta ação é irreversível.</p>
+                    </div>
+                  </div>
+                  <p className="text-xs text-muted mb-5">
+                    Tens a certeza que queres excluir a conta de{" "}
+                    <span className="font-bold text-text">{targetUser?.name}</span>{" "}
+                    (<span className="text-primary">{targetUser?.email}</span>)?
+                    Todos os dados do utilizador serão apagados permanentemente.
+                  </p>
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() => setConfirmDeleteId(null)}
+                      className="flex-1 py-2.5 rounded-xl border border-muted/20 text-muted text-xs font-semibold hover:bg-dark/50 transition-all cursor-pointer"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      onClick={() => handleDeleteUser(confirmDeleteId)}
+                      disabled={deletingId === confirmDeleteId}
+                      className="flex-1 py-2.5 rounded-xl bg-danger text-white text-xs font-bold hover:opacity-90 transition-all disabled:opacity-60 cursor-pointer disabled:cursor-not-allowed"
+                    >
+                      {deletingId === confirmDeleteId ? "A excluir..." : "Confirmar Exclusão"}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
 
           {/* Error Reports Section */}
           {activeTab === "errors" && (
