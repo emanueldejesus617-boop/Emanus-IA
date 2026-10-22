@@ -81,6 +81,31 @@ export default function DashboardLayout({
   const [mounted, setMounted] = useState(false);
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
   const [selectedVoiceURI, setSelectedVoiceURI] = useState<string>("");
+  const [isOnline, setIsOnline] = useState(true);
+  const [networkNotif, setNetworkNotif] = useState<{ msg: string; type: "error" | "success" | "warning" } | null>(null);
+
+  // Network connectivity detection for dashboard
+  useEffect(() => {
+    const handleOnline = () => {
+      setIsOnline(true);
+      setNetworkNotif({ msg: "Ligação à Internet restabelecida. ✅", type: "success" });
+      setTimeout(() => setNetworkNotif(null), 4000);
+    };
+    const handleOffline = () => {
+      setIsOnline(false);
+      setNetworkNotif({ msg: "Sem ligação à Internet. Algumas funcionalidades podem não estar disponíveis. 📶", type: "error" });
+    };
+    window.addEventListener("online", handleOnline);
+    window.addEventListener("offline", handleOffline);
+    setIsOnline(navigator.onLine);
+    if (!navigator.onLine) {
+      setNetworkNotif({ msg: "Sem ligação à Internet. Algumas funcionalidades podem não estar disponíveis. 📶", type: "error" });
+    }
+    return () => {
+      window.removeEventListener("online", handleOnline);
+      window.removeEventListener("offline", handleOffline);
+    };
+  }, []);
 
   useEffect(() => {
     if (typeof window !== "undefined" && "speechSynthesis" in window) {
@@ -338,8 +363,19 @@ export default function DashboardLayout({
     if (!bugDescription.trim()) return;
     setBugSending(true);
     try {
-      // Registo do relatório
-      await new Promise(r => setTimeout(r, 600));
+      const token = localStorage.getItem("token");
+      await fetch("/api/admin/errors/report", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify({
+          action: `bug-report:${bugCategory}`,
+          error: bugDescription.trim(),
+          details: { category: bugCategory, reportedAt: new Date().toISOString() }
+        })
+      });
       setBugSuccess(true);
       setBugDescription("");
       setTimeout(() => {
@@ -353,6 +389,24 @@ export default function DashboardLayout({
   };
 
   return (
+    <>
+    {/* Network Connectivity Notification Banner */}
+    {networkNotif && (
+      <div
+        className={`fixed top-0 left-0 right-0 z-[9999] flex items-center justify-center gap-2 px-4 py-3 text-sm font-medium animate-slide-down ${
+          networkNotif.type === "success"
+            ? "bg-emerald-500/90 text-white"
+            : "bg-red-500/90 text-white"
+        } backdrop-blur-sm shadow-lg`}
+      >
+        <span>{networkNotif.msg}</span>
+        <button
+          onClick={() => setNetworkNotif(null)}
+          className="ml-2 opacity-80 hover:opacity-100 transition-opacity"
+          aria-label="Fechar notificação"
+        >✕</button>
+      </div>
+    )}
     <div className="flex h-screen bg-dark flex-col md:flex-row overflow-hidden relative transition-colors duration-300">
       {/* Mobile Header Bar */}
       <header className="flex md:hidden items-center justify-between px-6 py-4 bg-surface border-b border-muted/10 h-16 w-full shrink-0 z-30 sticky top-0">
@@ -1236,5 +1290,6 @@ export default function DashboardLayout({
         </div>
       )}
     </div>
+    </>
   );
 }

@@ -6,6 +6,7 @@ import { authenticateUser } from "./auth";
 import { rateLimit } from "../utils/rateLimit";
 import { safeParseJSON } from "../utils/jsonSanitizer";
 import { getCurriculumForSubject } from "../data/mined-curriculum";
+import { checkAndIncrementLimit, reportErrorToAdmin } from "../utils/dailyLimits";
 
 const GenerateExamSchema = z.object({
   subject: z.string()
@@ -38,6 +39,21 @@ export async function examsRoutes(fastify: FastifyInstance) {
 
     try {
       const { subject } = GenerateExamSchema.parse(request.body);
+
+      // ── Daily exam limit: 1 simulado per day per user (skip for admins) ──
+      if (decoded.role !== "admin") {
+        const limitResult = await checkAndIncrementLimit(decoded.id, "exam", 1);
+        if (!limitResult.allowed) {
+          const resetDate = limitResult.resetAt
+            ? new Date(limitResult.resetAt).toLocaleTimeString("pt-AO", { hour: "2-digit", minute: "2-digit" })
+            : "meia-noite";
+          return reply.status(429).send({
+            error: `Limite diário atingido. Já realizaste o teu simulado de hoje. Podes fazer um novo depois das ${resetDate}. 🎯`,
+            limitReached: true,
+            resetAt: limitResult.resetAt,
+          });
+        }
+      }
 
       // Fetch user info from Firestore
       const userDoc = await firestore.collection("users").doc(decoded.id).get();
@@ -144,6 +160,16 @@ Retorne APENAS o JSON válido, sem qualquer tipo de formatação markdown, bloco
       if (e.status === 429 || (e.message && e.message.toLowerCase().includes("quota"))) {
         errorMsg = "Limite de quota da API do Gemini excedido. Por favor, tente novamente mais tarde.";
       }
+      // Report to admin
+      try {
+        await reportErrorToAdmin({
+          userId: decoded?.id,
+          userEmail: decoded?.email,
+          action: "generate-exam",
+          error: errorMsg,
+          details: { message: e.message, status: e.status }
+        });
+      } catch (_) {}
       return reply.status(500).send({ error: errorMsg });
     }
   });

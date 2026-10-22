@@ -6,6 +6,7 @@ import { authenticateUser } from "./auth";
 import { rateLimit } from "../utils/rateLimit";
 import { safeParseJSON } from "../utils/jsonSanitizer";
 import { validateTopics, getCurriculumForSubject } from "../data/mined-curriculum";
+import { checkAndIncrementLimit, reportErrorToAdmin } from "../utils/dailyLimits";
 
 const CompleteTopicSchema = z.object({
   subject: z.string(),
@@ -231,6 +232,21 @@ export async function lessonsRoutes(fastify: FastifyInstance) {
     try {
       const { subject, topicName, classe, curso } = GenerateLessonSchema.parse(request.body);
 
+      // ── Daily lesson limit: 1 lesson per day per user (skip for admins) ──
+      if (decoded.role !== "admin") {
+        const limitResult = await checkAndIncrementLimit(decoded.id, "lesson", 1);
+        if (!limitResult.allowed) {
+          const resetDate = limitResult.resetAt
+            ? new Date(limitResult.resetAt).toLocaleTimeString("pt-AO", { hour: "2-digit", minute: "2-digit" })
+            : "meia-noite";
+          return reply.status(429).send({
+            error: `Limite diário atingido. Já geraste a tua aula de hoje. Podes gerar uma nova aula depois das ${resetDate}. 📚`,
+            limitReached: true,
+            resetAt: limitResult.resetAt,
+          });
+        }
+      }
+
       const targetClasse = classe || "12.ª Classe";
       const targetCurso = curso || "Geral";
 
@@ -299,6 +315,17 @@ ATENÇÃO CRÍTICA PARA EVITAR ERROS DE FORMATAÇÃO JSON:
       if (e.status === 429 || (e.message && e.message.toLowerCase().includes("quota"))) {
         errorMsg = "Limite de quota da API do Gemini excedido. Por favor, tente novamente mais tarde.";
       }
+      // Report to admin
+      try {
+        const decoded2 = (request as any).decoded;
+        await reportErrorToAdmin({
+          userId: decoded2?.id,
+          userEmail: decoded2?.email,
+          action: "generate-lesson",
+          error: errorMsg,
+          details: { message: e.message, status: e.status }
+        });
+      } catch (_) {}
       return reply.status(500).send({ error: errorMsg });
     }
   });

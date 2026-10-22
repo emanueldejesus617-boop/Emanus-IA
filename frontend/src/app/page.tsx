@@ -46,6 +46,29 @@ export default function LoginPage() {
   const [checkingExistingSession, setCheckingExistingSession] = useState(true);
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
+  const [isOnline, setIsOnline] = useState(true);
+  const [networkNotif, setNetworkNotif] = useState<string | null>(null);
+
+  // Network connectivity detection
+  useEffect(() => {
+    const handleOnline = () => {
+      setIsOnline(true);
+      setNetworkNotif("Ligação restabelecida. ✅");
+      setTimeout(() => setNetworkNotif(null), 3000);
+    };
+    const handleOffline = () => {
+      setIsOnline(false);
+      setNetworkNotif("Sem ligação à Internet. Verifica a tua rede. 📶");
+    };
+    window.addEventListener("online", handleOnline);
+    window.addEventListener("offline", handleOffline);
+    setIsOnline(navigator.onLine);
+    if (!navigator.onLine) setNetworkNotif("Sem ligação à Internet. Verifica a tua rede. 📶");
+    return () => {
+      window.removeEventListener("online", handleOnline);
+      window.removeEventListener("offline", handleOffline);
+    };
+  }, []);
 
   // Processa autenticação Google tanto para popup quanto para redirect
   const processGoogleUser = async (user: User) => {
@@ -562,6 +585,25 @@ export default function LoginPage() {
 
   return (
     <>
+    {/* Network Connectivity Notification */}
+    {networkNotif && (
+      <div
+        className={`fixed top-0 left-0 right-0 z-[9999] flex items-center justify-center gap-2 px-4 py-3 text-sm font-medium transition-all duration-300 animate-slide-down ${
+          isOnline
+            ? "bg-emerald-500/90 text-white"
+            : "bg-red-500/90 text-white"
+        } backdrop-blur-sm shadow-lg`}
+      >
+        <span>{networkNotif}</span>
+        {!isOnline && (
+          <button
+            onClick={() => setNetworkNotif(null)}
+            className="ml-2 opacity-80 hover:opacity-100 transition-opacity"
+            aria-label="Fechar notificação"
+          >✕</button>
+        )}
+      </div>
+    )}
     <div className="grid min-h-screen grid-cols-1 lg:grid-cols-12 bg-dark font-sans text-text overflow-x-hidden transition-colors duration-300">
       {/* Botão Flutuante de Alternância de Tema */}
       {mounted && (
@@ -667,7 +709,7 @@ export default function LoginPage() {
               href="/privacidade" 
               className="hover:text-primary transition-colors font-medium"
             >
-              Privacidade & Cookies
+              Privacidade &amp; Cookies
             </a>
             <button 
               type="button"
@@ -677,6 +719,19 @@ export default function LoginPage() {
               Gerir Cookies
             </button>
           </div>
+        </div>
+
+        {/* Download App Button */}
+        <div className="relative z-10 flex justify-center mt-5">
+          <a
+            href="https://emanueldejesus617-boop.github.io/emanus-app-download/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full border border-primary/30 bg-primary/5 text-primary text-xs font-semibold hover:bg-primary/10 hover:border-primary/50 transition-all duration-200 shadow-sm hover:shadow-primary/20 hover:shadow-md active:scale-95"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
+            Descarregar App Emanus IA
+          </a>
         </div>
       </div>
 

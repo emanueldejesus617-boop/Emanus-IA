@@ -258,10 +258,13 @@ export default function LessonsPage() {
       const data = await res.json();
       if (!res.ok) {
         // Provide user-friendly error messages
+        if (data.error) {
+          throw new Error(data.error);
+        }
         if (res.status === 429) {
           throw new Error("Limite de requisições atingido. Aguarde 1 minuto e tente novamente.");
         }
-        throw new Error(data.error || "Erro ao carregar conteúdo da aula.");
+        throw new Error("Erro ao carregar conteúdo da aula.");
       }
       
       setLessonData(data);

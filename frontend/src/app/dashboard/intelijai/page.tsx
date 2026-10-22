@@ -628,7 +628,9 @@ export default function IntelijaiPage() {
 
               if (parsedData) {
                 if (parsedData.error) {
-                  accumulatedText = "Ocorreu um erro: " + parsedData.error;
+                  accumulatedText = parsedData.limitReached || parsedData.error.includes("Limite") 
+                    ? parsedData.error 
+                    : ("Ocorreu um erro: " + parsedData.error);
                   setMessages(prev => {
                     const newMsgs = [...prev];
                     const lastMsg = newMsgs[newMsgs.length - 1];
@@ -640,6 +642,7 @@ export default function IntelijaiPage() {
                     }
                     return newMsgs;
                   });
+                  speakStream(accumulatedText, true);
                   done = true;
                   break;
                 }

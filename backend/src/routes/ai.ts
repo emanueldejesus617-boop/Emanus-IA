@@ -4,6 +4,7 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 import { firestore } from "../db/db";
 import { rateLimit } from "../utils/rateLimit";
 import { authenticateUser } from "./auth";
+import { checkAndIncrementLimit, reportErrorToAdmin } from "../utils/dailyLimits";
 
 
 const ChatSchema = z.object({
@@ -185,6 +186,20 @@ export async function aiRoutes(fastify: FastifyInstance) {
       if (!decoded) return;
 
       const userId: string = decoded.id;
+
+      // ── Daily chat limit: 5 messages per day per user (skip for admins) ──
+      if (decoded.role !== "admin") {
+        const limitResult = await checkAndIncrementLimit(userId, "chat", 5);
+        if (!limitResult.allowed) {
+          reply.raw.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
+          reply.raw.setHeader('Cache-Control', 'no-cache');
+          reply.raw.setHeader('Connection', 'keep-alive');
+          const resetDate = limitResult.resetAt ? new Date(limitResult.resetAt).toLocaleTimeString("pt-AO", { hour: "2-digit", minute: "2-digit" }) : "meia-noite";
+          reply.raw.write(`data: ${JSON.stringify({ error: `Limite diário atingido. Já utilizaste as tuas 5 perguntas de hoje. Podes voltar a perguntar depois das ${resetDate}. 😊`, limitReached: true, resetAt: limitResult.resetAt })}\n\n`);
+          reply.raw.end();
+          return;
+        }
+      }
 
       reply.raw.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
       reply.raw.setHeader('Cache-Control', 'no-cache');

@@ -5,6 +5,7 @@ import { firestore } from "../db/db";
 import { authenticateUser } from "./auth";
 import { safeParseJSON } from "../utils/jsonSanitizer";
 import { rateLimit } from "../utils/rateLimit";
+import { checkAndIncrementLimit, reportErrorToAdmin } from "../utils/dailyLimits";
 
 const GenerateScheduleSchema = z.object({
   shift: z.enum(["morning", "afternoon", "night"]).default("morning").optional()
@@ -40,6 +41,21 @@ export async function scheduleRoutes(fastify: FastifyInstance) {
     try {
       const { shift: rawShift } = GenerateScheduleSchema.parse(request.body || {});
       const shift = rawShift || "morning";
+
+      // ── Weekly schedule limit: 1 per week per user (skip for admins) ──
+      if (decoded.role !== "admin") {
+        const limitResult = await checkAndIncrementLimit(decoded.id, "schedule", 1, true);
+        if (!limitResult.allowed) {
+          const resetDate = limitResult.resetAt
+            ? new Date(limitResult.resetAt).toLocaleDateString("pt-AO", { weekday: "long", day: "2-digit", month: "long" })
+            : "próxima segunda-feira";
+          return reply.status(429).send({
+            error: `Limite semanal atingido. Já geraste o teu horário esta semana. Podes gerar um novo ${resetDate}. 🗓️`,
+            limitReached: true,
+            resetAt: limitResult.resetAt,
+          });
+        }
+      }
 
       const userRef = firestore.collection("users").doc(decoded.id);
       const userDoc = await userRef.get();
@@ -180,6 +196,16 @@ Retorne APENAS o JSON válido sem formatação markdown ou blocos de código adi
       if (e.status === 429 || (e.message && e.message.toLowerCase().includes("quota"))) {
         errorMsg = "Limite de quota da API do Gemini excedido. Por favor, tente novamente mais tarde.";
       }
+      // Report to admin
+      try {
+        await reportErrorToAdmin({
+          userId: decoded?.id,
+          userEmail: decoded?.email,
+          action: "generate-schedule",
+          error: errorMsg,
+          details: { message: e.message, status: e.status }
+        });
+      } catch (_) {}
       return reply.status(500).send({ error: errorMsg });
     }
   });
