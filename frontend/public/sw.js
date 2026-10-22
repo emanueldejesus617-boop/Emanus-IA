@@ -74,3 +74,45 @@ self.addEventListener('fetch', (event) => {
       })
   );
 });
+
+// Evento de clique na notificação de estudo
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const targetUrl = (event.notification.data && event.notification.data.url) || '/dashboard/schedule';
+
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
+      for (const client of clientList) {
+        if (client.url && client.url.includes('/dashboard') && 'focus' in client) {
+          if ('navigate' in client) {
+            client.navigate(targetUrl);
+          }
+          return client.focus();
+        }
+      }
+      if (clients.openWindow) {
+        return clients.openWindow(targetUrl);
+      }
+    })
+  );
+});
+
+// Evento de push para notificações remotas no aparelho
+self.addEventListener('push', (event) => {
+  if (!event.data) return;
+  try {
+    const data = event.data.json();
+    const title = data.title || 'Emanus IA — Hora de Estudar';
+    const options = {
+      body: data.body || 'Chegou a hora de estudar a tua disciplina programada.',
+      icon: '/icon.png',
+      badge: '/icon.png',
+      vibrate: [200, 100, 200, 100, 200],
+      data: { url: data.url || '/dashboard/schedule' }
+    };
+    event.waitUntil(self.registration.showNotification(title, options));
+  } catch (err) {
+    console.warn('Erro ao processar push:', err);
+  }
+});
+

@@ -1,20 +1,18 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { Bot, ArrowLeft, ArrowRight } from "lucide-react";
+import { Bot, ArrowLeft, ArrowRight, Bell } from "lucide-react";
+import {
+  syncStudySchedule,
+  requestNotificationPermission,
+  getNotificationPermission,
+  sendDeviceNotification,
+  playNotificationChime,
+  checkAndTriggerStudyNotifications,
+  type ScheduleRow,
+  type DayKey
+} from "@/lib/studyNotificationManager";
 
-type ScheduleRow = {
-  time: string;
-  monday: string;
-  tuesday: string;
-  wednesday: string;
-  thursday: string;
-  friday: string;
-  saturday: string;
-  sunday: string;
-};
-
-type DayKey = "monday" | "tuesday" | "wednesday" | "thursday" | "friday" | "saturday" | "sunday";
 
 const DAY_COLORS: Record<DayKey, string> = {
   monday:    "bg-primary/10 text-primary",
@@ -123,6 +121,7 @@ export default function SchedulePage() {
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [editingCell, setEditingCell] = useState<{ row: number; col: DayKey } | null>(null);
   const [editingTime, setEditingTime] = useState<number | null>(null);
+  const [notifPermission, setNotifPermission] = useState<string>("default");
   const inputRef = useRef<HTMLInputElement>(null);
   const timeInputRef = useRef<HTMLInputElement>(null);
 
@@ -139,6 +138,7 @@ export default function SchedulePage() {
           setScheduleData(data.weekData);
           setEditData(JSON.parse(JSON.stringify(data.weekData)));
           setStep("table");
+          syncStudySchedule(data.weekData);
         }
       }
     } catch (err) {
@@ -148,7 +148,27 @@ export default function SchedulePage() {
 
   useEffect(() => {
     loadSchedule();
+    setNotifPermission(getNotificationPermission());
   }, []);
+
+  const handleToggleNotifications = async () => {
+    if (notifPermission === "granted") {
+      playNotificationChime();
+      await sendDeviceNotification("Lembretes Ativos no teu Aparelho! 🔔", {
+        body: "Tudo configurado! A Emanus IA avisar-te-á sempre que for a hora de estudar cada disciplina do teu horário.",
+        icon: "/icon.png",
+        badge: "/icon.png",
+        tag: "emanus-test-notif",
+      });
+      alert("As notificações estão ativas no teu aparelho! Enviámos uma notificação de teste.");
+    } else {
+      const granted = await requestNotificationPermission();
+      setNotifPermission(granted ? "granted" : "denied");
+      if (granted && scheduleData) {
+        checkAndTriggerStudyNotifications(scheduleData);
+      }
+    }
+  };
 
   useEffect(() => {
     if (editMode && editingCell && inputRef.current) {
@@ -194,6 +214,8 @@ export default function SchedulePage() {
         setScheduleData(data.weekData);
         setEditData(JSON.parse(JSON.stringify(data.weekData)));
         setStep("table");
+        syncStudySchedule(data.weekData);
+        checkAndTriggerStudyNotifications(data.weekData);
       }
     } catch (err: any) {
       setError(err.message || "Erro de ligação ao servidor.");
@@ -226,6 +248,8 @@ export default function SchedulePage() {
       });
       if (!res.ok) throw new Error("Falha ao guardar.");
       setScheduleData(JSON.parse(JSON.stringify(editData)));
+      syncStudySchedule(editData);
+      checkAndTriggerStudyNotifications(editData);
       setEditMode(false);
       setEditingCell(null);
       setSaveSuccess(true);
@@ -393,6 +417,19 @@ export default function SchedulePage() {
 
           {!editMode ? (
             <>
+              <button
+                id="toggle-schedule-notif-btn"
+                onClick={handleToggleNotifications}
+                className={`rounded-lg border px-3.5 py-2 text-xs sm:text-sm font-medium transition-colors cursor-pointer flex items-center gap-1.5 active:scale-95 ${
+                  notifPermission === "granted"
+                    ? "border-emerald-500/40 text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20"
+                    : "border-primary/50 text-primary hover:bg-primary/10"
+                }`}
+                title={notifPermission === "granted" ? "Lembretes ativos no teu aparelho! Clica para testar." : "Ativar notificações no teu aparelho na hora de estudar"}
+              >
+                <Bell className="w-3.5 h-3.5" />
+                <span>{notifPermission === "granted" ? "Lembretes Ativos" : "Ativar Lembretes"}</span>
+              </button>
               <button
                 id="edit-schedule-btn"
                 onClick={() => { setEditMode(true); setEditData(JSON.parse(JSON.stringify(scheduleData))); }}

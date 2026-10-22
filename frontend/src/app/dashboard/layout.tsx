@@ -30,6 +30,13 @@ import { Logo } from "@/components/logo";
 import { auth } from "@/lib/firebase";
 import { signOut } from "firebase/auth";
 import { parseJsonResponse } from "@/lib/utils";
+import {
+  startStudyNotificationScheduler,
+  syncStudySchedule,
+  getCachedSchedule,
+  requestNotificationPermission,
+  getNotificationPermission
+} from "@/lib/studyNotificationManager";
 
 
 
@@ -83,6 +90,8 @@ export default function DashboardLayout({
   const [selectedVoiceURI, setSelectedVoiceURI] = useState<string>("");
   const [isOnline, setIsOnline] = useState(true);
   const [networkNotif, setNetworkNotif] = useState<{ msg: string; type: "error" | "success" | "warning" } | null>(null);
+  const [studyAlert, setStudyAlert] = useState<{ subject: string; time: string; message?: string } | null>(null);
+  const [showNotifPermissionPrompt, setShowNotifPermissionPrompt] = useState(false);
 
   // Network connectivity detection for dashboard
   useEffect(() => {
@@ -106,6 +115,65 @@ export default function DashboardLayout({
       window.removeEventListener("offline", handleOffline);
     };
   }, []);
+
+  // Agendador de lembretes e notificações de estudo no aparelho
+  useEffect(() => {
+    const cleanup = startStudyNotificationScheduler();
+
+    // Sincroniza o horário da base de dados se não estiver em cache
+    const token = localStorage.getItem("token");
+    if (token && !getCachedSchedule()) {
+      fetch("/api/schedule/current", {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+        .then(res => res.ok ? res.json() : null)
+        .then(data => {
+          if (data && data.weekData) {
+            syncStudySchedule(data.weekData);
+          }
+        })
+        .catch(() => {});
+    }
+
+    // Sugere ativar notificações no aparelho se ainda estiver 'default'
+    const perm = getNotificationPermission();
+    const promptDismissed = typeof window !== "undefined" ? localStorage.getItem("emanus_notif_prompt_dismissed") : null;
+    if (perm === "default" && !promptDismissed) {
+      const timer = setTimeout(() => {
+        setShowNotifPermissionPrompt(true);
+      }, 5000);
+      return () => {
+        cleanup();
+        clearTimeout(timer);
+      };
+    }
+
+    return cleanup;
+  }, []);
+
+  // Escuta os alertas de estudo disparados pelo scheduler
+  useEffect(() => {
+    const handleStudyReminder = (e: any) => {
+      if (e.detail) {
+        setStudyAlert(e.detail);
+      }
+    };
+    window.addEventListener("emanusStudyReminder", handleStudyReminder);
+    return () => {
+      window.removeEventListener("emanusStudyReminder", handleStudyReminder);
+    };
+  }, []);
+
+  const handleEnableNotifications = async () => {
+    setShowNotifPermissionPrompt(false);
+    localStorage.setItem("emanus_notif_prompt_dismissed", "true");
+    await requestNotificationPermission();
+  };
+
+  const handleDismissNotifPrompt = () => {
+    setShowNotifPermissionPrompt(false);
+    localStorage.setItem("emanus_notif_prompt_dismissed", "true");
+  };
 
   useEffect(() => {
     if (typeof window !== "undefined" && "speechSynthesis" in window) {
@@ -405,6 +473,79 @@ export default function DashboardLayout({
           className="ml-2 opacity-80 hover:opacity-100 transition-opacity"
           aria-label="Fechar notificação"
         >✕</button>
+      </div>
+    )}
+
+    {/* Banner de Lembrete de Estudo Ativo */}
+    {studyAlert && (
+      <div className="fixed top-3 left-1/2 -translate-x-1/2 z-[10000] w-[94%] max-w-lg bg-surface/95 border border-primary/60 shadow-[0_12px_40px_rgba(0,255,136,0.25)] backdrop-blur-md rounded-2xl p-4 animate-slide-down flex items-center justify-between gap-3 text-text">
+        <div className="flex items-center gap-3">
+          <div className="w-11 h-11 rounded-xl bg-primary/20 border border-primary/30 flex items-center justify-center text-primary text-xl shrink-0 animate-bounce">
+            ⏰
+          </div>
+          <div>
+            <div className="text-[11px] font-bold text-primary uppercase tracking-wider flex items-center gap-1.5">
+              <span>Lembrete de Estudo</span>
+              <span className="text-muted">•</span>
+              <span>{studyAlert.time}</span>
+            </div>
+            <div className="text-sm font-bold text-text">
+              {studyAlert.subject}
+            </div>
+            <div className="text-xs text-muted">
+              A Emanus IA está pronta para a aula de hoje!
+            </div>
+          </div>
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          <Link
+            href={`/dashboard/intelijai?subject=${encodeURIComponent(studyAlert.subject)}`}
+            onClick={() => setStudyAlert(null)}
+            className="px-3.5 py-2 rounded-xl bg-primary text-dark text-xs font-bold hover:opacity-90 transition-all cursor-pointer shadow-sm active:scale-95"
+          >
+            Estudar
+          </Link>
+          <button
+            onClick={() => setStudyAlert(null)}
+            className="p-1.5 rounded-lg text-muted hover:text-text hover:bg-surface transition-colors cursor-pointer"
+            aria-label="Fechar lembrete"
+          >
+            ✕
+          </button>
+        </div>
+      </div>
+    )}
+
+    {/* Prompt Discreto para Ativar Notificações no Aparelho */}
+    {showNotifPermissionPrompt && (
+      <div className="fixed bottom-4 right-4 z-[9990] max-w-sm bg-surface/95 border border-primary/40 shadow-xl backdrop-blur-md rounded-2xl p-4 animate-slide-down text-text">
+        <div className="flex items-start gap-3">
+          <div className="w-9 h-9 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary shrink-0 text-lg">
+            🔔
+          </div>
+          <div className="flex-1">
+            <h4 className="text-xs font-bold text-text uppercase tracking-wider">
+              Notificações de Horário
+            </h4>
+            <p className="text-xs text-muted mt-0.5">
+              Desejas que a Emanus avise no teu aparelho quando for a hora de estudar cada disciplina?
+            </p>
+            <div className="mt-3 flex items-center gap-2">
+              <button
+                onClick={handleEnableNotifications}
+                className="px-3 py-1.5 rounded-lg bg-primary text-dark text-xs font-bold hover:opacity-90 transition-opacity cursor-pointer shadow-sm"
+              >
+                Ativar Notificações
+              </button>
+              <button
+                onClick={handleDismissNotifPrompt}
+                className="px-2.5 py-1.5 rounded-lg text-muted hover:text-text text-xs transition-colors cursor-pointer"
+              >
+                Mais tarde
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
     )}
     <div className="flex h-screen bg-dark flex-col md:flex-row overflow-hidden relative transition-colors duration-300">
