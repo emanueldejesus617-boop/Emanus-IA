@@ -541,7 +541,7 @@ export default function LessonsPage() {
 
           <div className="p-6 rounded-2xl border border-surface bg-surface flex gap-4 mb-6">
             <div className="h-12 w-12 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center flex-shrink-0 relative">
-              <img src="/venus-logo.svg" alt="Emanus IA" className="h-7 w-7 animate-pulse" />
+              <img src="/icon.png" alt="Emanus IA" className="h-7 w-7 animate-pulse object-contain" />
             </div>
             <div>
               <h3 className="font-extrabold text-xs text-text flex items-center gap-1">
@@ -718,7 +718,7 @@ export default function LessonsPage() {
 
       <div className="mb-8 p-6 rounded-2xl border border-primary/20 bg-primary/5 backdrop-blur-md flex flex-col md:flex-row items-center gap-4 animate-slide-up">
         <div className="h-14 w-14 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center flex-shrink-0 relative shadow-sm">
-          <img src="/venus-logo.svg" alt="Emanus IA" className="h-8 w-8 animate-pulse" />
+          <img src="/icon.png" alt="Emanus IA" className="h-8 w-8 animate-pulse object-contain" />
           <span className="absolute -bottom-1 -right-1 bg-primary text-dark text-[9px] font-black px-1.5 py-0.2 rounded-full uppercase">Pronto</span>
         </div>
         <div>

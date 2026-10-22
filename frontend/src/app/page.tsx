@@ -566,7 +566,7 @@ export default function LoginPage() {
       <div className="flex min-h-screen flex-col items-center justify-center bg-dark text-text p-4">
         <div className="flex flex-col items-center gap-4 animate-fade-in">
           <div className="h-16 w-16 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center relative shadow-lg shadow-primary/5">
-            <img src="/venus-logo.svg" alt="Emanus IA" className="h-10 w-10 animate-pulse" />
+            <img src="/icon.png" alt="Emanus IA" className="h-10 w-10 animate-pulse object-contain" />
           </div>
           <div className="text-center">
             <h2 className="text-lg font-bold text-text">Emanus IA</h2>
