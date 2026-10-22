@@ -1,6 +1,11 @@
 import { NextRequest } from "next/server";
 import { getFastifyApp } from "@/backend/app";
 
+import dns from "node:dns";
+if (typeof dns?.setDefaultResultOrder === "function") {
+  dns.setDefaultResultOrder("ipv4first");
+}
+
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;

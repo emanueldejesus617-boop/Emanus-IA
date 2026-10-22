@@ -4,8 +4,10 @@ import { firestore } from "@/backend/db/db";
 import { verifyToken } from "@/backend/utils/security";
 import { getSystemInstruction } from "@/backend/routes/ai";
 
-export const runtime = "nodejs";
-export const dynamic = "force-dynamic";
+import dns from "node:dns";
+if (typeof dns?.setDefaultResultOrder === "function") {
+  dns.setDefaultResultOrder("ipv4first");
+}
 
 
 export async function POST(req: NextRequest) {

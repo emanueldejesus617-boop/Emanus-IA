@@ -183,7 +183,7 @@ export async function authRoutes(fastify: FastifyInstance) {
 
       const token = signToken(
         { id: user.id, email: verifiedEmail, role: user.role || "student", name: user.name },
-        "7d"
+        "90d"
       );
 
       let parsedSubjects: string[] = [];
@@ -340,7 +340,7 @@ export async function authRoutes(fastify: FastifyInstance) {
 
       const token = signToken(
         { id: user.id, email: normalizedEmail, role: user.role || "student", name: user.name },
-        "7d"
+        "90d"
       );
 
       const parsedSubjects = user.subjects ? (typeof user.subjects === 'string' ? JSON.parse(user.subjects) : user.subjects) : [];
@@ -408,7 +408,7 @@ export async function authRoutes(fastify: FastifyInstance) {
 
       const token = signToken(
         { id: newUserId, email: normalizedEmail, role: "student", name: newUser.name },
-        "7d"
+        "90d"
       );
 
       return reply.status(201).send({ 

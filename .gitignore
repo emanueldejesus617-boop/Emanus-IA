@@ -24,6 +24,7 @@ sqlite.db-journal
 .env.test.local
 .env.production.local
 .env.*.local
+VERCEL_ENV_VARS.txt
 
 # Credentials & Service accounts
 *firebase-adminsdk*.json

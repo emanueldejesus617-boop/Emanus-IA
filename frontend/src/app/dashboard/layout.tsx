@@ -144,6 +144,16 @@ export default function DashboardLayout({
       .then(async (res) => {
         if (!res.ok) {
           if (res.status === 401 || res.status === 403) {
+            // Tenta obter novo token pelo Firebase Auth antes de desconectar
+            if (auth.currentUser) {
+              try {
+                const refreshed = await auth.currentUser.getIdToken(true);
+                if (refreshed) {
+                  localStorage.setItem("token", refreshed);
+                  return null;
+                }
+              } catch {}
+            }
             localStorage.clear();
             try { await signOut(auth); } catch {}
             router.push("/");

@@ -272,14 +272,14 @@ export default function ExamsPage() {
               })}
             </div>
 
-            {/* Emanus IA warning when selected subject has no completed lessons */}
+            {/* Emanus IA info when selected subject has no completed lessons */}
             {selectedSubject && (completedTopics[selectedSubject] || []).length === 0 && (
-              <div className="mb-6 flex gap-3 p-4 rounded-xl border border-danger/25 bg-danger/5 animate-slide-up">
-                <div className="h-8 w-8 rounded-full bg-danger/10 border border-danger/20 flex items-center justify-center flex-shrink-0 text-danger font-bold text-xs">!</div>
+              <div className="mb-6 flex gap-3 p-4 rounded-xl border border-primary/25 bg-primary/5 animate-slide-up">
+                <div className="h-8 w-8 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center flex-shrink-0 text-primary font-bold text-xs">✨</div>
                 <div>
-                  <p className="text-xs font-bold text-danger">Emanus IA — Simulado Indisponível</p>
+                  <p className="text-xs font-bold text-primary">Emanus IA — Simulado Diagnóstico</p>
                   <p className="text-xs text-muted mt-0.5 leading-relaxed">
-                    Não tens nenhuma aula concluída em <strong className="text-text">{selectedSubject}</strong>. Conclui pelo menos uma aula na aba <strong className="text-text">Aulas</strong> antes de poderes fazer um simulado.
+                    Ainda não concluíste aulas em <strong className="text-text">{selectedSubject}</strong>. A Emanus IA preparou um <strong className="text-text">Simulado Diagnóstico oficial do MINED</strong> para testares os teus conhecimentos agora mesmo!
                   </p>
                 </div>
               </div>
@@ -303,10 +303,10 @@ export default function ExamsPage() {
 
             <button
               onClick={startExam}
-              disabled={!selectedSubject || (completedTopics[selectedSubject] || []).length === 0}
+              disabled={!selectedSubject}
               className="w-full py-4 bg-primary text-dark font-bold rounded-xl hover:opacity-95 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer shadow-lg text-center"
             >
-              Iniciar Simulado (5 Questões)
+              {(completedTopics[selectedSubject] || []).length > 0 ? "Iniciar Simulado de Revisão (5 Questões)" : "Iniciar Simulado Diagnóstico (5 Questões)"}
             </button>
           </div>
 

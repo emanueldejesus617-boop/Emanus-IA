@@ -204,7 +204,10 @@ export default function LessonsPage() {
   };
 
   const getTopicsForSubject = (subject: string) => {
-    return programs[subject] || [];
+    if (programs[subject] && Array.isArray(programs[subject]) && programs[subject].length > 0) {
+      return programs[subject];
+    }
+    return CURRICULUM[subject] || DEFAULT_TOPICS;
   };
 
   const isTopicCompleted = (subject: string, topic: string) => {
@@ -710,23 +713,21 @@ export default function LessonsPage() {
         <p className="mt-1 sm:mt-2 text-xs sm:text-sm text-muted">Acede ao currículo das tuas disciplinas.</p>
       </header>
 
-      {!programsLoading && !hasAnyProgram && (
-        <div className="mb-8 p-6 rounded-2xl border border-warning/30 bg-warning/5 backdrop-blur-md flex flex-col md:flex-row items-center gap-4 animate-slide-up">
-          <div className="h-16 w-16 rounded-full bg-primary/20 border border-primary/40 flex items-center justify-center flex-shrink-0 relative">
-            <img src="/venus-logo.svg" alt="Emanus IA" className="h-10 w-10 animate-pulse" />
-            <span className="absolute -bottom-1 -right-1 bg-warning text-dark text-[9px] font-black px-1 rounded uppercase">Aviso</span>
-          </div>
-          <div>
-            <h3 className="font-extrabold text-sm text-text flex items-center gap-1.5">
-              <span className="text-primary">Emanus IA</span>
-              <span className="text-[10px] text-muted font-normal bg-white/5 px-2 py-0.5 rounded">Tutora Virtual</span>
-            </h3>
-            <p className="text-xs text-muted mt-1 leading-relaxed">
-              Olá! Como a tua tutora virtual, informo que <strong className="text-warning">é impossível gerar aula por falta de programa trimestral escolar</strong>. Por favor, escolhe uma das disciplinas abaixo e insere o teu programa trimestral de tópicos para começarmos a estudar!
-            </p>
-          </div>
+      <div className="mb-8 p-6 rounded-2xl border border-primary/20 bg-primary/5 backdrop-blur-md flex flex-col md:flex-row items-center gap-4 animate-slide-up">
+        <div className="h-14 w-14 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center flex-shrink-0 relative shadow-sm">
+          <img src="/venus-logo.svg" alt="Emanus IA" className="h-8 w-8 animate-pulse" />
+          <span className="absolute -bottom-1 -right-1 bg-primary text-dark text-[9px] font-black px-1.5 py-0.2 rounded-full uppercase">Pronto</span>
         </div>
-      )}
+        <div>
+          <h3 className="font-extrabold text-sm text-text flex items-center gap-1.5">
+            <span className="text-primary">Emanus IA</span>
+            <span className="text-[10px] text-muted font-normal bg-white/5 px-2 py-0.5 rounded">Tutora Virtual</span>
+          </h3>
+          <p className="text-xs text-muted mt-1 leading-relaxed">
+            O currículo oficial do <strong className="text-text font-semibold">MINED Angola</strong> está pronto e ativo. Escolhe qualquer disciplina abaixo para começares uma aula imediata ou personalizares os teus temas escolares!
+          </p>
+        </div>
+      </div>
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         {dynamicSubjects.map((sub: string, i: number) => {

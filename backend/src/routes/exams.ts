@@ -5,6 +5,7 @@ import { firestore } from "../db/db";
 import { authenticateUser } from "./auth";
 import { rateLimit } from "../utils/rateLimit";
 import { safeParseJSON } from "../utils/jsonSanitizer";
+import { getCurriculumForSubject } from "../data/mined-curriculum";
 
 const GenerateExamSchema = z.object({
   subject: z.string()
@@ -69,14 +70,15 @@ export async function examsRoutes(fastify: FastifyInstance) {
         .filter((t: any) => t.subject && t.subject.toLowerCase() === subject.toLowerCase())
         .map((t: any) => t.topicName);
 
-      if (completedForSubject.length === 0) {
-        return reply.status(400).send({
-          error: `Não tens nenhuma aula concluída em ${subject}. Conclui pelo menos uma aula antes de fazer um simulado.`,
-          noCompletedLessons: true
-        });
+      let activeTopics = completedForSubject;
+      let isDiagnostic = false;
+      if (activeTopics.length === 0) {
+        isDiagnostic = true;
+        const official = getCurriculumForSubject(subject) || [];
+        activeTopics = official.length > 0 ? official.slice(0, 5) : ["Fundamentos e Conceitos Centrais", "Aplicações Práticas", "Exercícios de Fixação"];
       }
 
-      const topicsList = completedForSubject.map((t: string) => `"${t}"`).join(", ");
+      const topicsList = activeTopics.map((t: string) => `"${t}"`).join(", ");
 
       const isEnglish = subject.toLowerCase().includes("inglês") || 
                         subject.toLowerCase().includes("ingles") || 
@@ -84,10 +86,11 @@ export async function examsRoutes(fastify: FastifyInstance) {
 
       const prompt = `Gere um simulado contendo exatamente 5 questões de escolha múltipla sobre a disciplina de "${subject}" para um estudante angolano da "${classe}" (curso: ${curso}).
 
-IMPORTANTE: As questões devem ser EXCLUSIVAMENTE sobre os seguintes tópicos que o estudante já estudou e concluiu:
+${isDiagnostic 
+  ? `Este é um simulado geral/diagnóstico baseado nos seguintes tópicos fundamentais do currículo oficial do MINED:` 
+  : `As questões devem ser focadas nos tópicos concluídos pelo estudante:`}
 ${topicsList}
 
-Não incluas questões sobre tópicos que não estejam nesta lista.
 As questões devem seguir rigorosamente o padrão e o currículo oficial dos exames nacionais do MINED (Ministério da Educação de Angola).
 ${isEnglish ? `Como a disciplina é de Inglês, as perguntas, as opções de resposta e a explicação devem ser escritas obrigatoriamente e inteiramente em inglês (English).` : ''}
 Retorne OBRIGATORIAMENTE um array JSON contendo objetos com as chaves:
@@ -131,7 +134,7 @@ Retorne APENAS o JSON válido, sem qualquer tipo de formatação markdown, bloco
         throw new Error("Formato de resposta do simulado inválido.");
       }
 
-      return { questions, completedTopics: completedForSubject };
+      return { questions, completedTopics: activeTopics, isDiagnostic };
     } catch (e: any) {
       if (e instanceof z.ZodError) {
         return reply.status(400).send({ error: "Dados inválidos", details: e.errors });

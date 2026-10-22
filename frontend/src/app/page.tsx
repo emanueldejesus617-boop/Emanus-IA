@@ -14,6 +14,7 @@ import {
   createUserWithEmailAndPassword,
   sendEmailVerification,
   sendPasswordResetEmail,
+  onAuthStateChanged,
   User 
 } from "firebase/auth";
 
@@ -42,6 +43,7 @@ export default function LoginPage() {
   const [forgotDevLink, setForgotDevLink] = useState("");
   const router = useRouter();
 
+  const [checkingExistingSession, setCheckingExistingSession] = useState(true);
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
 
@@ -91,7 +93,80 @@ export default function LoginPage() {
 
     setMounted(true);
 
-    // Verificar se o utilizador acabou de regressar de um redirecionamento do Google
+    // 1. Verificação de sessão existente no dispositivo (Sessão Permanente)
+    const checkSavedSession = async () => {
+      try {
+        const token = localStorage.getItem("token");
+        const storedUser = localStorage.getItem("user");
+
+        if (token && storedUser) {
+          let userObj: any = null;
+          try {
+            userObj = JSON.parse(storedUser);
+          } catch {
+            userObj = null;
+          }
+
+          if (userObj && userObj.id) {
+            // Tenta validar em segundo plano rapidamente (com timeout de 2.5s para não prender offline)
+            try {
+              const controller = new AbortController();
+              const timeoutId = setTimeout(() => controller.abort(), 2500);
+
+              const res = await fetch("/api/auth/me", {
+                headers: { Authorization: `Bearer ${token}` },
+                signal: controller.signal
+              });
+              clearTimeout(timeoutId);
+
+              if (res.ok) {
+                const data = await parseJsonResponse(res);
+                if (data && data.user) {
+                  localStorage.setItem("user", JSON.stringify(data.user));
+                  if (data.user.role === "admin") {
+                    router.replace("/dashboard/admin");
+                    return;
+                  } else if (!data.user.classe) {
+                    router.replace("/onboarding");
+                    return;
+                  } else {
+                    router.replace("/dashboard");
+                    return;
+                  }
+                }
+              } else if (res.status === 401 || res.status === 403) {
+                // Token expirado: tenta refresh via Firebase se o utilizador estiver autenticado
+                if (auth.currentUser) {
+                  try {
+                    const freshToken = await auth.currentUser.getIdToken(true);
+                    if (freshToken) {
+                      localStorage.setItem("token", freshToken);
+                      router.replace(userObj.role === "admin" ? "/dashboard/admin" : (!userObj.classe ? "/onboarding" : "/dashboard"));
+                      return;
+                    }
+                  } catch {}
+                }
+                // Token comprovadamente inválido e sem possibilidade de refresh
+                localStorage.removeItem("token");
+                localStorage.removeItem("user");
+              }
+            } catch {
+              // Falha de rede ou timeout: mantém sessão em cache offline e redireciona
+              router.replace(userObj.role === "admin" ? "/dashboard/admin" : (!userObj.classe ? "/onboarding" : "/dashboard"));
+              return;
+            }
+          }
+        }
+      } catch (err) {
+        console.warn("Aviso ao verificar sessão prévia:", err);
+      } finally {
+        setCheckingExistingSession(false);
+      }
+    };
+
+    checkSavedSession();
+
+    // 2. Verificar se o utilizador acabou de regressar de um redirecionamento do Google
     const handleRedirectResult = async () => {
       try {
         const result = await getRedirectResult(auth);
@@ -462,6 +537,28 @@ export default function LoginPage() {
       setLoading(false);
     }
   };
+
+  if (checkingExistingSession) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center bg-dark text-text p-4">
+        <div className="flex flex-col items-center gap-4 animate-fade-in">
+          <div className="h-16 w-16 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center relative shadow-lg shadow-primary/5">
+            <img src="/venus-logo.svg" alt="Emanus IA" className="h-10 w-10 animate-pulse" />
+          </div>
+          <div className="text-center">
+            <h2 className="text-lg font-bold text-text">Emanus IA</h2>
+            <p className="text-xs text-muted mt-1.5 flex items-center justify-center gap-2">
+              <svg className="animate-spin h-3.5 w-3.5 text-primary" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              A restaurar a tua sessão...
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <>

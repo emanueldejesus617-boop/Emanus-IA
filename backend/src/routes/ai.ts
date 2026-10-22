@@ -126,6 +126,18 @@ DIRETRIZES DE RESPOSTA QUANDO PERGUNTAREM SOBRE A EMANUS, A TUA ORIGEM OU CRIADO
   return instruction;
 }
 
+const SUBJECT_KEYWORDS: Record<string, string[]> = {
+  "Matemática": ["matematica", "derivada", "integral", "limite", "algebra", "funcao", "equacao", "fracao", "trigonometria", "triangulo", "geometria", "seno", "cosseno", "tangente", "matriz", "vetor", "probabilidade", "estatistica", "polinomio", "calculo", "logaritmo", "expoente", "raiz", "x²", "f(x)"],
+  "Física": ["fisica", "cinematica", "newton", "velocidade", "aceleracao", "forca", "energia", "mecanica", "termodinamica", "gravidade", "optica", "circuito", "eletricidade", "corrente", "tensao", "joule", "watt", "massa", "potencia", "onda", "atrito"],
+  "Química": ["quimica", "atomo", "molecula", "tabela periodica", "reacao", "acido", "base", "ph", "estequiometria", "ligacao", "eletron", "proton", "oxigenio", "carbono", "solucao", "molaridade", "isomeria", "organica", "inorganica"],
+  "Biologia": ["biologia", "celula", "adn", "dna", "genetica", "fotossintese", "mitocondria", "reproducao", "ecologia", "ecossistema", "orgao", "sangue", "circulacao", "respiracao", "sistema nervoso", "bacteria", "virus", "especie", "evolucao"],
+  "História": ["historia", "independencia", "colonialismo", "guerra", "seculo", "revolucao", "imperio", "rainha njinga", "agostinho neto", "monarquia", "escravatura", "tratado", "constituicao", "civilizacao"],
+  "Geografia": ["geografia", "clima", "relevo", "rio kwanza", "rio", "luanda", "provincia", "continente", "populacao", "vegetacao", "planalto", "mapa", "fronteira", "bacia hidrografica"],
+  "Língua Portuguesa": ["portugues", "lingua portuguesa", "redacao", "gramatica", "verbo", "substantivo", "adjetivo", "oracao", "sintaxe", "sujeito", "predicado", "pontuacao", "texto", "interpretacao", "narrativa", "poesia", "concordancia"],
+  "Língua Inglesa": ["ingles", "english", "grammar", "verb", "vocabulary", "translation", "pronoun", "sentence", "listening", "speaking", "present simple", "past simple"],
+  "Informática": ["informatica", "programacao", "algoritmo", "codigo", "javascript", "python", "computador", "rede", "base de dados", "software", "hardware", "internet", "sistema operativo", "html", "css", "sql"]
+};
+
 async function classifySubject(
   ai: GoogleGenerativeAI,
   userMessage: string,
@@ -136,38 +148,24 @@ async function classifySubject(
     return fallback;
   }
 
-  try {
-    const classifierModel = ai.getGenerativeModel({
-      model: process.env.GEMINI_MODEL || "gemini-2.5-flash",
-      generationConfig: { maxOutputTokens: 30, temperature: 0.1 }
-    });
+  const normMsg = userMessage.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
 
-    const prompt = `Analise a mensagem do estudante e determine a qual disciplina ela pertence.
-
-Disciplinas Registadas do Estudante:
-${registeredSubjects.map(s => `- "${s}"`).join("\n")}
-
-Mensagem do Estudante: "${userMessage.slice(0, 300)}"
-
-REGRAS:
-1. Se a mensagem for sobre um tópico ou tema de uma das Disciplinas Registadas acima, responda EXATAMENTE com o nome dessa disciplina (copie o nome idêntico).
-2. Se for uma pergunta geral, curiosidade ou saudação, responda EXATAMENTE com: "${fallback}".
-3. Responda APENAS o nome de uma das disciplinas registadas listadas, sem explicações adicionais, pontuação ou aspas.`;
-
-    const result = await classifierModel.generateContent(prompt);
-    const text = result.response.text().trim().replace(/['"]/g, "");
-
-    const normText = text.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
-    const matched = registeredSubjects.find(s => {
-      const normSub = s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
-      return normSub === normText || normText.includes(normSub);
-    });
-    if (matched) return matched;
-    return fallback;
-  } catch (err) {
-    console.error("Error classifying subject:", err);
-    return fallback;
+  // 1. Deteção ultra-rápida em 0ms por palavras-chave
+  for (const regSub of registeredSubjects) {
+    const normSub = regSub.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+    if (normMsg.includes(normSub)) {
+      return regSub;
+    }
+    const keywords = SUBJECT_KEYWORDS[regSub] || [];
+    for (const kw of keywords) {
+      if (normMsg.includes(kw)) {
+        return regSub;
+      }
+    }
   }
+
+  // 2. Se nenhuma palavra-chave direta coincidir, fallback imediato para a primeira disciplina do perfil
+  return fallback;
 }
 
 export async function aiRoutes(fastify: FastifyInstance) {

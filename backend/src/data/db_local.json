@@ -255,9 +255,9 @@
       "id": "nN1N4N6Py6NnrA06EO800KzUPM72",
       "streak": 1,
       "email": "emanueldejesus617@gmail.com",
-      "updatedAt": "2026-09-26T18:13:20.167Z",
-      "password": "$2b$10$pWmInSwC1FvIOFovuxb4FOU7Fz7cQC5KS1yf2Pqid/TQpd4lc0/Ma",
-      "lastLoginAt": "2026-09-26T18:18:56.485Z"
+      "password": "$2b$10$TqtrTHnvv5uCQNLk9D2OmeXhzEDcihpRqOf.iJb.ZYHh2dKRORBwS",
+      "updatedAt": "2026-10-17T00:26:10.064Z",
+      "lastLoginAt": "2026-10-22T00:35:57.257Z"
     },
     "89AyB54THjPHDd18GbUaq0hVwUg2": {
       "id": "89AyB54THjPHDd18GbUaq0hVwUg2",
@@ -388,6 +388,20 @@
       "title": "Explica os principais conceitos de Arqui...",
       "subject": "Arquitetura de Computadores",
       "createdAt": "2026-09-30T14:09:36.789Z"
+    },
+    "61325b7d-2fe9-4ccc-ae28-8dd4a86ffe00": {
+      "id": "61325b7d-2fe9-4ccc-ae28-8dd4a86ffe00",
+      "userId": "test-user-emanus-123",
+      "title": "Olá Emanus, qual é a fórmula de Bhaskara...",
+      "subject": "Matemática",
+      "createdAt": "2026-10-22T00:35:06.888Z"
+    },
+    "827c64bf-061e-498a-81d4-2f9572a80868": {
+      "id": "827c64bf-061e-498a-81d4-2f9572a80868",
+      "userId": "nN1N4N6Py6NnrA06EO800KzUPM72",
+      "title": "Olá Emanus, qual é a fórmula de Bhaskara...",
+      "subject": "Matemática",
+      "createdAt": "2026-10-22T00:36:33.351Z"
     }
   },
   "study_plans": {
@@ -396,6 +410,12 @@
       "userId": "Cvfce5EsdqdIAw6dTgq49p6vzeN2",
       "weekData": "[{\"time\":\"06:00 - 07:30\",\"monday\":\"Matemática (Limites e Continuidade)\",\"tuesday\":\"Inglês (Gramática: Estruturas Condicionais)\",\"wednesday\":\"Língua Portuguesa (Redação: Artigo de Opinião)\",\"thursday\":\"Técnicas de Programação (Algoritmos de Busca e Ordenação)\",\"friday\":\"Matemática (Integrais Definidas e Áreas)\",\"saturday\":\"Revisão Livre (Foco em matemática e programação)\",\"sunday\":\"Descanso\"},{\"time\":\"08:00 - 09:30\",\"monday\":\"Língua Portuguesa (Sintaxe: Concordância Verbal e Nominal)\",\"tuesday\":\"Sistemas de Informação (Modelagem de Dados: Normalização de Banco de Dados)\",\"wednesday\":\"Matemática (Derivadas: Análise Gráfica de Funções)\",\"thursday\":\"Sistemas de Informação (Segurança de Sistemas: Conceitos Básicos)\",\"friday\":\"Educação Física (Teoria: Saúde e Bem-Estar no Desporto Escolar)\",\"saturday\":\"Revisão Livre (Exercícios de Português e Inglês)\",\"sunday\":\"Descanso\"},{\"time\":\"19:30 - 21:00\",\"monday\":\"Técnicas de Programação (Programação Orientada a Objetos: Polimorfismo)\",\"tuesday\":\"Arquitetura de Computadores (Organização de Entradas/Saídas e Periféricos)\",\"wednesday\":\"Empreendedorismo (Marketing Digital para Negócios Tecnológicos)\",\"thursday\":\"Arquitetura de Computadores (Memória Virtual e Gerenciamento de Memória)\",\"friday\":\"Língua Portuguesa (Interpretação e Produção de Textos Argumentativos)\",\"saturday\":\"Revisão Livre (Estudo de casos de Sistemas de Informação/Arquitetura)\",\"sunday\":\"Descanso\"}]",
       "createdAt": "2026-09-30T14:06:46.236Z"
+    },
+    "0851ba3b-aa75-4674-b595-c6d2b793ce37": {
+      "id": "0851ba3b-aa75-4674-b595-c6d2b793ce37",
+      "userId": "nN1N4N6Py6NnrA06EO800KzUPM72",
+      "weekData": "[{\"time\":\"14:00 - 15:30\",\"monday\":\"Língua Portuguesa (Interpretação Textual e Coerência)\",\"tuesday\":\"Matemática (Funções: Exponenciais e Logarítmicas)\",\"wednesday\":\"Inglês (Gramática: Tempos Verbais Avançados)\",\"thursday\":\"Língua Portuguesa (Concordância Verbal e Nominal)\",\"friday\":\"Educação Física (Fisiologia do Exercício: Sistemas Energéticos)\",\"saturday\":\"Matemática (Resolução de Problemas e Exercícios Variados)\",\"sunday\":\"Descanso\"},{\"time\":\"16:00 - 17:30\",\"monday\":\"Inglês (Reading Comprehension e Vocabulário Avançado)\",\"tuesday\":\"Língua Portuguesa (Redação: Estrutura e Argumentação)\",\"wednesday\":\"Matemática (Cálculo Diferencial: Derivadas e Aplicações)\",\"thursday\":\"Inglês (Speaking e Listening Practice)\",\"friday\":\"Matemática (Geometria Analítica: Retas e Planos)\",\"saturday\":\"Revisão Livre\",\"sunday\":\"Descanso\"},{\"time\":\"19:00 - 20:30\",\"monday\":\"Matemática (Probabilidades e Estatística Descritiva)\",\"tuesday\":\"Educação Física (História dos Jogos Olímpicos e Desportos Coletivos)\",\"wednesday\":\"Língua Portuguesa (Literatura Angolana: Autores e Obras)\",\"thursday\":\"Matemática (Integrais e suas Aplicações Básicas)\",\"friday\":\"Língua Portuguesa (Análise Sintática: Orações Coordenadas e Subordinadas)\",\"saturday\":\"Língua Portuguesa (Revisão de Gramática e Leitura de Textos)\",\"sunday\":\"Descanso\"}]",
+      "createdAt": "2026-10-22T00:36:06.372Z"
     }
   },
   "quarterly_programs": {
@@ -663,6 +683,38 @@
       "role": "model",
       "content": "Com certeza! Parece que tivemos uma pequena interrupção, mas estou pronta para aprofundarmos os conceitos de Arquitetura de Computadores. Esta é uma matéria fascinante e muito importante para quem está a estudar Informática, pois ajuda-nos a perceber \"por dentro\" como os computadores funcionam.\n\nVamos começar por uma base, e depois podemos ir explorando cada parte.\n\nPara ti, que estás na 12.ª classe de Informática, quando ouves \"Arquitetura de Computadores\", o que te vem à cabeça? Imaginas a planta de um edifício, ou talvez a estrutura de um carro? Que ideias tens?",
       "createdAt": "2026-09-30T14:10:07.902Z"
+    },
+    "93d87e0b-eb72-477e-b363-c019d5867a68": {
+      "id": "93d87e0b-eb72-477e-b363-c019d5867a68",
+      "conversationId": "61325b7d-2fe9-4ccc-ae28-8dd4a86ffe00",
+      "role": "user",
+      "content": "Olá Emanus, qual é a fórmula de Bhaskara?",
+      "mediaData": null,
+      "mediaType": null,
+      "createdAt": "2026-10-22T00:35:07.070Z"
+    },
+    "3efe45ac-e3b2-4235-b94d-3c379a25dae0": {
+      "id": "3efe45ac-e3b2-4235-b94d-3c379a25dae0",
+      "conversationId": "61325b7d-2fe9-4ccc-ae28-8dd4a86ffe00",
+      "role": "model",
+      "content": "Olá! Sou a Emanus IA, a tua professora virtual. 😊\n\nA fórmula de Bhaskara é uma ferramenta muito útil que usamos para encontrar as soluções (ou raízes) de uma equação quadrática. Uma equação quadrática é do tipo:\n\n**ax² + bx + c = 0**\n\nonde 'a', 'b' e 'c' são números reais, e 'a' tem que ser diferente de zero.\n\nA fórmula de Bhaskara é a seguinte:\n\n**x = [-b ± raiz quadrada de (b² - 4ac)] dividido por (2a)**\n\nVamos detalhar cada parte:\n\n-   **x**: Representa as soluções da equação, ou seja, os valores que fazem a equação ser verdadeira. Podem ser duas soluções, uma solução, ou nenhuma solução real.\n-   **a**: É o coeficiente do termo que tem x elevado a 2 (x²).\n-   **b**: É o coeficiente do termo que tem x.\n-   **c**: É o termo independente, ou seja, o número que não tem x.\n-   **raiz quadrada de (b² - 4ac)**: A parte dentro da raiz (b² - 4ac) é muito importante e é chamada de **discriminante**, geralmente representada pela letra grega delta (Δ). É ela que nos diz quantas soluções a equação tem:\n    -   Se o delta for maior que zero (Δ > 0), teremos duas soluções reais e diferentes.\n    -   Se o delta for igual a zero (Δ = 0), teremos uma única solução real (ou duas soluções iguais).\n    -   Se o delta for menor que zero (Δ < 0), não teremos soluções reais.\n\nEsta fórmula é como um mapa para resolver essas equações. Queres que vejamos um exemplo de como aplicá-la numa equação específica? Ou talvez queiras explorar mais sobre o discriminante (delta)? Estou aqui para te guiar!",
+      "createdAt": "2026-10-22T00:35:12.781Z"
+    },
+    "1c79cbbe-9aec-41b3-9f95-978eef1e2838": {
+      "id": "1c79cbbe-9aec-41b3-9f95-978eef1e2838",
+      "conversationId": "827c64bf-061e-498a-81d4-2f9572a80868",
+      "role": "user",
+      "content": "Olá Emanus, qual é a fórmula de Bhaskara?",
+      "mediaData": null,
+      "mediaType": null,
+      "createdAt": "2026-10-22T00:36:33.486Z"
+    },
+    "e2e4a677-ca42-4083-89d3-c01101f74634": {
+      "id": "e2e4a677-ca42-4083-89d3-c01101f74634",
+      "conversationId": "827c64bf-061e-498a-81d4-2f9572a80868",
+      "role": "model",
+      "content": "Olá! Sou a Emanus IA, a tua professora virtual. 😊\n\nA fórmula de Bhaskara é uma ferramenta muito importante para resolver equações do segundo grau. Ela permite encontrar os valores de \"x\" que satisfazem uma equação da forma:\n\n`ax² + bx + c = 0`\n\nAqui está a fórmula de Bhaskara, apresentada de forma clara:\n\n`x = (-b ± raiz quadrada de (b² - 4ac)) / (2a)`\n\nVamos ver o que cada parte significa, para que te seja mais fácil entender e aplicar:\n\n1.  **Onde encontramos os termos?**\n    *   **a** é o número que acompanha o `x²` (o coeficiente de `x²`).\n    *   **b** é o número que acompanha o `x` (o coeficiente de `x`).\n    *   **c** é o número que está sozinho, sem o `x` (o termo independente).\n\n2.  **O que é o \"delta\" ou discriminante?**\n    *   A parte que está dentro da raiz quadrada, `b² - 4ac`, é muito importante e tem um nome especial: chama-se **delta** (representado pela letra grega Δ).\n    *   Então, podemos reescrever a fórmula assim: `x = (-b ± raiz quadrada de delta) / (2a)`\n    *   Calcular o delta primeiro é um bom passo, pois ele nos diz quantas soluções a equação tem:\n        *   Se delta for maior que zero (Δ > 0), terás duas soluções reais e diferentes para x.\n        *   Se delta for igual a zero (Δ = 0), terás uma única solução real para x (ou duas soluções iguais).\n        *   Se delta for menor que zero (Δ < 0), a equação não tem soluções reais.\n\nEsta fórmula é uma das joias da matemática e, apesar de parecer um pouco complexa à primeira vista, com prática vais dominá-la rapidamente!\n\nTens alguma equação do segundo grau que gostarias de tentar resolver com esta fórmula? Ou gostarias de ver um exemplo de aplicação? Estou aqui para ajudar!",
+      "createdAt": "2026-10-22T00:36:38.058Z"
     }
   },
   "company_info": {

@@ -35,7 +35,7 @@ export interface TokenPayload {
 /**
  * Assina um token JWT com algoritmo seguro e tempo de expiração definido.
  */
-export function signToken(payload: TokenPayload, expiresIn: string | number = "7d"): string {
+export function signToken(payload: TokenPayload, expiresIn: string | number = "90d"): string {
   return jwt.sign(payload, getJwtSecret(), {
     algorithm: "HS256",
     expiresIn: expiresIn as any,

@@ -231,27 +231,6 @@ export async function lessonsRoutes(fastify: FastifyInstance) {
     if (!decoded) return;
 
     try {
-      const snapshot = await firestore
-        .collection("quarterly_programs")
-        .where("userId", "==", decoded.id)
-        .get();
-
-      const hasAnyProgram = snapshot.docs.some((doc: any) => {
-        const p = doc.data();
-        try {
-          const parsed = typeof p.topics === 'string' ? JSON.parse(p.topics) : (p.topics || []);
-          return Array.isArray(parsed) && parsed.length > 0;
-        } catch {
-          return false;
-        }
-      });
-
-      if (!hasAnyProgram) {
-        return reply.status(400).send({
-          error: "É impossível gerar aula por falta de programa trimestral escolar."
-        });
-      }
-
       const { subject, topicName, classe, curso } = GenerateLessonSchema.parse(request.body);
 
       const targetClasse = classe || "12.ª Classe";

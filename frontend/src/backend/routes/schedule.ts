@@ -106,29 +106,48 @@ Retorne APENAS o JSON válido sem formatação markdown ou blocos de código adi
         }
       });
 
-      let response;
-      for (let attempt = 0; attempt < 3; attempt++) {
-        try {
-          response = await model.generateContent(prompt);
-          break;
-        } catch (retryErr: any) {
-          if (retryErr?.status === 429 && attempt < 2) {
-            const waitMs = (attempt + 1) * 5000;
-            fastify.log.warn(`Rate limited (attempt ${attempt + 1}), retrying in ${waitMs}ms...`);
-            await new Promise(resolve => setTimeout(resolve, waitMs));
-            continue;
+      let weekData: any = null;
+      try {
+        let response;
+        for (let attempt = 0; attempt < 2; attempt++) {
+          try {
+            response = await model.generateContent(prompt);
+            break;
+          } catch (retryErr: any) {
+            if (retryErr?.status === 429 && attempt < 1) {
+              await new Promise(resolve => setTimeout(resolve, 3000));
+              continue;
+            }
+            throw retryErr;
           }
-          throw retryErr;
         }
+        if (response) {
+          const text = response.response.text().trim();
+          weekData = safeParseJSON(text);
+        }
+      } catch (aiErr) {
+        fastify.log.warn({ aiErr }, "Aviso na geração de horário por IA, a aplicar plano curricular estruturado");
       }
-      if (!response) {
-        throw new Error('Failed to get response from AI after retries');
-      }
-      const text = response.response.text().trim();
-      const weekData = safeParseJSON(text);
-      if (!weekData) {
-        fastify.log.error({ raw: text }, "Failed to parse Gemini response even after sanitization");
-        throw new Error("Formato de resposta do horário inválido.");
+
+      // Fallback estruturado garantido se o Gemini falhar ou retornar formato inesperado
+      if (!weekData || !Array.isArray(weekData) || weekData.length === 0) {
+        weekData = freeSlots.map((slot, index) => {
+          const s1 = subjects[index % subjects.length] || "Matemática";
+          const s2 = subjects[(index + 1) % subjects.length] || "Física";
+          const s3 = subjects[(index + 2) % subjects.length] || "Química";
+          const s4 = subjects[(index + 3) % subjects.length] || "Língua Portuguesa";
+          const s5 = subjects[(index + 4) % subjects.length] || "Biologia";
+          return {
+            time: slot,
+            monday: `${s1} (Revisão e Teoria)`,
+            tuesday: `${s2} (Exercícios Práticos)`,
+            wednesday: `${s3} (Resolução de Problemas)`,
+            thursday: `${s4} (Análise Curricular)`,
+            friday: `${s5} (Fixação de Conteúdos)`,
+            saturday: index === 0 ? "Revisão Semanal" : "Exercícios Livres",
+            sunday: index === 0 ? "Planeamento da Semana" : "Descanso"
+          };
+        });
       }
 
       const snapshot = await firestore
