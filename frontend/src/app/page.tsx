@@ -741,18 +741,9 @@ export default function LoginPage() {
         <div className="absolute top-1/2 left-1/2 translate-x-[-50%] translate-y-[-50%] w-[90%] h-[90%] lg:w-[60%] lg:h-[60%] rounded-full bg-primary/5 blur-[90px] pointer-events-none" />
 
         {/* Cabeçalho visível no Mobile */}
-        <div className="lg:hidden flex flex-col items-center mb-6 text-center relative z-10">
-          <Logo variant="splash" className="mb-2" />
-          <p className="text-xs text-muted mt-0.5">O teu professor inteligente particular.</p>
-          <a
-            href="https://emanueldejesus617-boop.github.io/emanus-app-download/"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="mt-3.5 inline-flex items-center gap-2 px-5 py-2.5 rounded-full border border-primary/30 bg-primary/10 text-primary text-xs font-semibold hover:bg-primary/20 hover:border-primary/50 transition-all duration-200 shadow-sm active:scale-95"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
-            Descarregar App Emanus IA
-          </a>
+        <div className="lg:hidden flex flex-col items-center mb-8 text-center relative z-10">
+          <Logo variant="splash" className="mb-3" />
+          <p className="text-xs text-muted mt-1">O teu professor inteligente particular.</p>
         </div>
 
         {/* Card do Formulário */}
@@ -1011,19 +1002,6 @@ export default function LoginPage() {
           </div>
             </>
           )}
-        </div>
-
-        {/* Download App no Mobile */}
-        <div className="lg:hidden relative z-10 flex justify-center mt-5">
-          <a
-            href="https://emanueldejesus617-boop.github.io/emanus-app-download/"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full border border-primary/30 bg-primary/5 text-primary text-xs font-semibold hover:bg-primary/15 hover:border-primary/50 transition-all duration-200 shadow-sm active:scale-95"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
-            Descarregar App Emanus IA
-          </a>
         </div>
 
         {/* Rodapé sutil mobile */}

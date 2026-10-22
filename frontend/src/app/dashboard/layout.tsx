@@ -24,8 +24,7 @@ import {
   Send,
   CheckCircle2,
   Lock,
-  BookOpen,
-  Download
+  BookOpen
 } from "lucide-react";
 import { Logo } from "@/components/logo";
 import { auth } from "@/lib/firebase";
@@ -551,35 +550,23 @@ export default function DashboardLayout({
     )}
     <div className="flex h-screen bg-dark flex-col md:flex-row overflow-hidden relative transition-colors duration-300">
       {/* Mobile Header Bar */}
-      <header className="flex md:hidden items-center justify-between px-4 sm:px-6 py-4 bg-surface border-b border-muted/10 h-16 w-full shrink-0 z-30 sticky top-0">
+      <header className="flex md:hidden items-center justify-between px-6 py-4 bg-surface border-b border-muted/10 h-16 w-full shrink-0 z-30 sticky top-0">
         <Link href="/dashboard" className="cursor-pointer">
           <Logo variant="topbar" />
         </Link>
-        <div className="flex items-center gap-2.5">
-          <a
-            href="https://emanueldejesus617-boop.github.io/emanus-app-download/"
-            target="_blank"
-            rel="noopener noreferrer"
-            title="Descarregar App Emanus IA"
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-primary/30 bg-primary/10 text-primary text-xs font-semibold hover:bg-primary/20 active:scale-95 transition-all shadow-sm"
-          >
-            <Download className="w-3.5 h-3.5" />
-            <span>App</span>
-          </a>
-          <button 
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="p-2 rounded-lg bg-dark/40 text-text hover:text-primary transition-colors cursor-pointer border border-muted/15 flex items-center justify-center"
-            aria-label="Menu"
-          >
-            <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              {mobileMenuOpen ? (
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              ) : (
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-              )}
-            </svg>
-          </button>
-        </div>
+        <button 
+          onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+          className="p-2 rounded-lg bg-dark/40 text-text hover:text-primary transition-colors cursor-pointer border border-muted/15 flex items-center justify-center"
+          aria-label="Menu"
+        >
+          <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            {mobileMenuOpen ? (
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            ) : (
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+            )}
+          </svg>
+        </button>
       </header>
 
       {/* Mobile Drawer Overlay */}
@@ -606,7 +593,7 @@ export default function DashboardLayout({
             <X className="w-5 h-5" />
           </button>
         </div>
-        <nav className="flex-1 space-y-1 px-4 overflow-y-auto">
+        <nav className="flex-1 space-y-1 px-4">
           {navItems.map((item) => {
             const isActive = pathname === item.href;
             return (
@@ -620,19 +607,6 @@ export default function DashboardLayout({
               </Link>
             );
           })}
-
-          <div className="pt-3 pb-1">
-            <a
-              href="https://emanueldejesus617-boop.github.io/emanus-app-download/"
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={() => setMobileMenuOpen(false)}
-              className="flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl border border-primary/25 bg-primary/5 text-primary text-xs font-semibold hover:bg-primary/15 hover:border-primary/45 transition-all cursor-pointer shadow-sm active:scale-98"
-            >
-              <Download className="w-4 h-4 shrink-0" />
-              <span>Descarregar Aplicação</span>
-            </a>
-          </div>
         </nav>
 
         {/* Setor de Perfil do Usuário com Dropdown */}
@@ -741,20 +715,6 @@ export default function DashboardLayout({
                   </svg>
                   <span>Acerca da Emanus IA</span>
                 </button>
-
-                <div className="h-px bg-muted/10" />
-
-                {/* Botão Descarregar App */}
-                <a
-                  href="https://emanueldejesus617-boop.github.io/emanus-app-download/"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  onClick={() => setProfileMenuOpen(false)}
-                  className="w-full flex items-center gap-3 rounded-lg px-3 py-2 text-xs font-semibold hover:bg-dark text-primary transition-all cursor-pointer"
-                >
-                  <Download className="w-4 h-4 flex-shrink-0" />
-                  <span>Descarregar Aplicação</span>
-                </a>
 
                 <div className="h-px bg-muted/10" />
 
