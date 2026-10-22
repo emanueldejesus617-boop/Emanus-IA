@@ -5,6 +5,17 @@ import { firestore } from "../db/db";
 import { authenticateUser } from "./auth";
 import { safeParseJSON } from "../utils/jsonSanitizer";
 import { rateLimit } from "../utils/rateLimit";
+import { checkAndIncrementLimit, reportErrorToAdmin } from "../utils/dailyLimits";
+
+const withSafeTimeout = <T>(promise: Promise<T>, ms = 22000): Promise<T> => {
+  let timer: any;
+  return Promise.race([
+    promise.finally(() => { if (timer) clearTimeout(timer); }),
+    new Promise<T>((_, reject) => {
+      timer = setTimeout(() => reject(new Error("Timeout Gemini")), ms);
+    })
+  ]);
+};
 
 const GenerateScheduleSchema = z.object({
   shift: z.enum(["morning", "afternoon", "night"]).default("morning").optional()
@@ -63,6 +74,21 @@ export async function scheduleRoutes(fastify: FastifyInstance) {
       const curso = user.curso || "Geral";
       const subjects = user.subjects ? (typeof user.subjects === 'string' ? JSON.parse(user.subjects) : user.subjects) : ["Língua Portuguesa", "Matemática", "Inglês", "Educação Física"];
 
+      // ── Limite semanal de horários: 1 por semana por utilizador (isentado para admin) ──
+      if (decoded.role !== "admin") {
+        const limitResult = await checkAndIncrementLimit(decoded.id, "schedule", 1, true);
+        if (!limitResult.allowed) {
+          const resetDate = limitResult.resetAt
+            ? new Date(limitResult.resetAt).toLocaleDateString("pt-AO", { weekday: "long", day: "2-digit", month: "long" })
+            : "próxima segunda-feira";
+          return reply.status(429).send({
+            error: `Limite semanal atingido. Já geraste o teu horário esta semana. Podes gerar um novo ${resetDate}. 🗓️`,
+            limitReached: true,
+            resetAt: limitResult.resetAt,
+          });
+        }
+      }
+
       const shiftTimeMap: Record<string, { label: string; slots: string[] }> = {
         morning: {
           label: "manhã (07:00 - 12:30)",
@@ -111,7 +137,7 @@ Retorne APENAS o JSON válido sem formatação markdown ou blocos de código adi
         let response;
         for (let attempt = 0; attempt < 2; attempt++) {
           try {
-            response = await model.generateContent(prompt);
+            response = await withSafeTimeout(model.generateContent(prompt), 22000);
             break;
           } catch (retryErr: any) {
             if (retryErr?.status === 429 && attempt < 1) {
@@ -178,6 +204,12 @@ Retorne APENAS o JSON válido sem formatação markdown ou blocos de código adi
         return reply.status(400).send({ error: "Parâmetros inválidos", details: e.errors });
       }
       fastify.log.error(e);
+      await reportErrorToAdmin({
+        userId: decoded.id,
+        userEmail: decoded.email,
+        action: "generate-schedule",
+        error: e.message || "Erro desconhecido",
+      });
       let errorMsg = "Erro ao gerar o horário inteligente";
       if (e.status === 429 || (e.message && e.message.toLowerCase().includes("quota"))) {
         errorMsg = "Limite de quota da API do Gemini excedido. Por favor, tente novamente mais tarde.";

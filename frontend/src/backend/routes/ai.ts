@@ -4,6 +4,7 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 import { firestore } from "../db/db";
 import { rateLimit } from "../utils/rateLimit";
 import { authenticateUser } from "./auth";
+import { checkAndIncrementLimit, reportErrorToAdmin } from "../utils/dailyLimits";
 
 
 const ChatSchema = z.object({
@@ -186,6 +187,20 @@ export async function aiRoutes(fastify: FastifyInstance) {
       if (!decoded) return;
 
       const userId: string = decoded.id;
+
+      // ── Limite diário do chat: 5 perguntas por dia por utilizador (isentado para admin) ──
+      if (decoded.role !== "admin") {
+        const limitResult = await checkAndIncrementLimit(userId, "chat", 5);
+        if (!limitResult.allowed) {
+          reply.raw.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
+          reply.raw.setHeader('Cache-Control', 'no-cache');
+          reply.raw.setHeader('Connection', 'keep-alive');
+          const resetDate = limitResult.resetAt ? new Date(limitResult.resetAt).toLocaleTimeString("pt-AO", { hour: "2-digit", minute: "2-digit" }) : "meia-noite";
+          reply.raw.write(`data: ${JSON.stringify({ error: `Limite diário atingido. Já utilizaste as tuas 5 perguntas de hoje. Podes voltar a conversar com a Emanus IA depois das ${resetDate}. 😊`, limitReached: true, resetAt: limitResult.resetAt })}\n\n`);
+          reply.raw.end();
+          return;
+        }
+      }
 
       reply.raw.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
       reply.raw.setHeader('Cache-Control', 'no-cache');
@@ -389,6 +404,10 @@ export async function aiRoutes(fastify: FastifyInstance) {
         return reply.status(400).send({ error: "Dados inválidos", details: e.errors });
       }
       fastify.log.error(e);
+      await reportErrorToAdmin({
+        action: "chat",
+        error: e.message || "Erro desconhecido",
+      });
       let errorMsg = "Erro interno ao contactar a IA";
       if (e.status === 429 || (e.message && e.message.toLowerCase().includes("quota"))) {
         errorMsg = "Limite de quota da API do Gemini excedido. Por favor, tente novamente mais tarde.";

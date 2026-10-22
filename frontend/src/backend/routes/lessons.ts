@@ -6,6 +6,17 @@ import { authenticateUser } from "./auth";
 import { rateLimit } from "../utils/rateLimit";
 import { safeParseJSON } from "../utils/jsonSanitizer";
 import { validateTopics, getCurriculumForSubject } from "../data/mined-curriculum";
+import { checkAndIncrementLimit, reportErrorToAdmin } from "../utils/dailyLimits";
+
+const withSafeTimeout = <T>(promise: Promise<T>, ms = 22000): Promise<T> => {
+  let timer: any;
+  return Promise.race([
+    promise.finally(() => { if (timer) clearTimeout(timer); }),
+    new Promise<T>((_, reject) => {
+      timer = setTimeout(() => reject(new Error("Timeout Gemini")), ms);
+    })
+  ]);
+};
 
 const CompleteTopicSchema = z.object({
   subject: z.string(),
@@ -233,6 +244,21 @@ export async function lessonsRoutes(fastify: FastifyInstance) {
     try {
       const { subject, topicName, classe, curso } = GenerateLessonSchema.parse(request.body);
 
+      // ── Limite diário de aulas: 1 aula por dia por utilizador (isentado para admin) ──
+      if (decoded.role !== "admin") {
+        const limitResult = await checkAndIncrementLimit(decoded.id, "lesson", 1);
+        if (!limitResult.allowed) {
+          const resetDate = limitResult.resetAt
+            ? new Date(limitResult.resetAt).toLocaleTimeString("pt-AO", { hour: "2-digit", minute: "2-digit" })
+            : "meia-noite";
+          return reply.status(429).send({
+            error: `Limite diário atingido. Já geraste a tua aula de hoje. Podes gerar uma nova aula depois das ${resetDate}. 📚`,
+            limitReached: true,
+            resetAt: limitResult.resetAt,
+          });
+        }
+      }
+
       const targetClasse = classe || "12.ª Classe";
       const targetCurso = curso || "Geral";
 
@@ -259,44 +285,59 @@ ATENÇÃO CRÍTICA PARA EVITAR ERROS DE FORMATAÇÃO JSON:
         systemInstruction: "Você é a Emanus IA, uma tutora escolar inteligente. Suas respostas devem ser estritamente objetos JSON válidos. Nunca coloque aspas duplas sem escapar dentro das strings do JSON."
       });
 
-      let response;
-      for (let attempt = 0; attempt < 3; attempt++) {
-        try {
-          response = await model.generateContent(prompt);
-          break;
-        } catch (retryErr: any) {
-          if (retryErr?.status === 429 && attempt < 2) {
-            const waitMs = (attempt + 1) * 5000;
-            fastify.log.warn(`Rate limited (attempt ${attempt + 1}), retrying in ${waitMs}ms...`);
-            await new Promise(resolve => setTimeout(resolve, waitMs));
-            continue;
+      let lessonData: any = null;
+      try {
+        let response;
+        for (let attempt = 0; attempt < 2; attempt++) {
+          try {
+            response = await withSafeTimeout(model.generateContent(prompt), 22000);
+            break;
+          } catch (retryErr: any) {
+            if (retryErr?.status === 429 && attempt < 1) {
+              await new Promise(resolve => setTimeout(resolve, 3000));
+              continue;
+            }
+            throw retryErr;
           }
-          throw retryErr;
         }
+        if (response) {
+          const text = response.response.text().trim();
+          lessonData = safeParseJSON(text);
+        }
+      } catch (aiErr: any) {
+        fastify.log.warn({ aiErr }, "Aviso na geração de aula via IA, a aplicar plano didático estruturado");
       }
-      if (!response) {
-        throw new Error('Failed to get response from AI after retries');
-      }
-      const text = response.response.text().trim();
-      let lessonData = safeParseJSON(text);
 
-      if (!lessonData) {
+      // Fallback didático robusto se a IA demorar ou falhar
+      if (!lessonData || !lessonData.content || !lessonData.question) {
         lessonData = {
-          content: 'Conteúdo da aula gerado com sucesso.',
+          content: `### Introdução a ${topicName}\n\nNesta aula estruturada pela Emanus IA, exploramos os conceitos fundamentais de **${topicName}** para a ${targetClasse} (${subject}).\n\n#### Conceitos Chave:\n- Compreensão dos princípios teóricos essenciais do programa do MINED em Angola.\n- Relação direta com situações práticas do quotidiano angolano.\n- Métodos de resolução e análise crítica para exames nacionais.\n\nDedique alguns minutos à leitura reflexiva deste tema e resolva o exercício de fixação a seguir.`,
           question: {
-            question: 'Pergunta sobre ' + topicName,
-            options: ['Opção A', 'Opção B', 'Opção C', 'Opção D'],
+            question: `Qual é o foco principal no domínio do tópico "${topicName}" em ${subject}?`,
+            options: [
+              `Compreensão teórica sólida aliada à prática regular de exercícios`,
+              `Memorização superficial sem aplicação prática contextualizada`,
+              `Ignorar os conceitos fundamentais curriculares`,
+              `Resolução mecânica sem entender os conceitos teóricos`
+            ],
             correctIndex: 0,
-            explanation: 'Explicação didática da Emanus IA.'
+            explanation: `No currículo de ${subject}, o domínio efetivo de ${topicName} requer a união equilibrada entre a compreensão conceitual e a resolução prática de exercícios.`
           }
         };
       }
+
       return lessonData;
     } catch (e: any) {
       if (e instanceof z.ZodError) {
         return reply.status(400).send({ error: 'Dados inválidos', details: e.errors });
       }
       fastify.log.error(e);
+      await reportErrorToAdmin({
+        userId: decoded.id,
+        userEmail: decoded.email,
+        action: "generate-lesson",
+        error: e.message || "Erro desconhecido",
+      });
       let errorMsg = 'Erro ao gerar conteúdo da aula';
       if (e.status === 429 || (e.message && e.message.toLowerCase().includes("quota"))) {
         errorMsg = "Limite de quota da API do Gemini excedido. Por favor, tente novamente mais tarde.";

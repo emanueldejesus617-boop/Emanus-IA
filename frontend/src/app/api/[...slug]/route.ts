@@ -49,8 +49,16 @@ async function handle(req: NextRequest): Promise<Response> {
       payload,
     });
 
+    // Rotas com geração de IA (horário, aulas, simulados e chat) exigem tempo suficiente para retorno dos tokens
+    const isAiRoute =
+      url.includes("/api/schedule/generate") ||
+      url.includes("/api/lessons/generate") ||
+      url.includes("/api/exams/generate") ||
+      url.includes("/api/ai/");
+    const timeoutMs = isAiRoute ? 58000 : 35000;
+
     const timeoutPromise = new Promise<never>((_, reject) => {
-      timeoutTimer = setTimeout(() => reject(new Error("Timeout de resposta da API")), 25000);
+      timeoutTimer = setTimeout(() => reject(new Error("Timeout de resposta da API")), timeoutMs);
     });
 
     const res = await Promise.race([

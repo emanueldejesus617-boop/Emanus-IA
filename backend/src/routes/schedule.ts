@@ -7,6 +7,16 @@ import { safeParseJSON } from "../utils/jsonSanitizer";
 import { rateLimit } from "../utils/rateLimit";
 import { checkAndIncrementLimit, reportErrorToAdmin } from "../utils/dailyLimits";
 
+const withSafeTimeout = <T>(promise: Promise<T>, ms = 22000): Promise<T> => {
+  let timer: any;
+  return Promise.race([
+    promise.finally(() => { if (timer) clearTimeout(timer); }),
+    new Promise<T>((_, reject) => {
+      timer = setTimeout(() => reject(new Error("Timeout Gemini")), ms);
+    })
+  ]);
+};
+
 const GenerateScheduleSchema = z.object({
   shift: z.enum(["morning", "afternoon", "night"]).default("morning").optional()
 });
@@ -125,7 +135,7 @@ Retorne APENAS o JSON válido sem formatação markdown ou blocos de código adi
         let response;
         for (let attempt = 0; attempt < 2; attempt++) {
           try {
-            response = await model.generateContent(prompt);
+            response = await withSafeTimeout(model.generateContent(prompt), 22000);
             break;
           } catch (retryErr: any) {
             if (retryErr?.status === 429 && attempt < 1) {

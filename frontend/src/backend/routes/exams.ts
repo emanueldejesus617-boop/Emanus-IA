@@ -6,6 +6,17 @@ import { authenticateUser } from "./auth";
 import { rateLimit } from "../utils/rateLimit";
 import { safeParseJSON } from "../utils/jsonSanitizer";
 import { getCurriculumForSubject } from "../data/mined-curriculum";
+import { checkAndIncrementLimit, reportErrorToAdmin } from "../utils/dailyLimits";
+
+const withSafeTimeout = <T>(promise: Promise<T>, ms = 22000): Promise<T> => {
+  let timer: any;
+  return Promise.race([
+    promise.finally(() => { if (timer) clearTimeout(timer); }),
+    new Promise<T>((_, reject) => {
+      timer = setTimeout(() => reject(new Error("Timeout Gemini")), ms);
+    })
+  ]);
+};
 
 const GenerateExamSchema = z.object({
   subject: z.string()
@@ -40,6 +51,21 @@ export async function examsRoutes(fastify: FastifyInstance) {
 
     try {
       const { subject } = GenerateExamSchema.parse(request.body);
+
+      // ── Limite diário de simulados: 1 simulado por dia por utilizador (isentado para admin) ──
+      if (decoded.role !== "admin") {
+        const limitResult = await checkAndIncrementLimit(decoded.id, "exam", 1);
+        if (!limitResult.allowed) {
+          const resetDate = limitResult.resetAt
+            ? new Date(limitResult.resetAt).toLocaleTimeString("pt-AO", { hour: "2-digit", minute: "2-digit" })
+            : "meia-noite";
+          return reply.status(429).send({
+            error: `Limite diário atingido. Já realizaste o teu simulado de hoje. Podes fazer um novo depois das ${resetDate}. 🎯`,
+            limitReached: true,
+            resetAt: limitResult.resetAt,
+          });
+        }
+      }
 
       // Fetch user info from Firestore
       const userDoc = await firestore.collection("users").doc(decoded.id).get();
@@ -111,29 +137,43 @@ Retorne APENAS o JSON válido, sem qualquer tipo de formatação markdown, bloco
         }
       });
 
-      let response;
-      for (let attempt = 0; attempt < 3; attempt++) {
-        try {
-          response = await model.generateContent(prompt);
-          break;
-        } catch (retryErr: any) {
-          if (retryErr?.status === 429 && attempt < 2) {
-            const waitMs = (attempt + 1) * 5000;
-            fastify.log.warn(`Rate limited (attempt ${attempt + 1}), retrying in ${waitMs}ms...`);
-            await new Promise(resolve => setTimeout(resolve, waitMs));
-            continue;
+      let questions: any = null;
+      try {
+        let response;
+        for (let attempt = 0; attempt < 2; attempt++) {
+          try {
+            response = await withSafeTimeout(model.generateContent(prompt), 22000);
+            break;
+          } catch (retryErr: any) {
+            if (retryErr?.status === 429 && attempt < 1) {
+              await new Promise(resolve => setTimeout(resolve, 3000));
+              continue;
+            }
+            throw retryErr;
           }
-          throw retryErr;
         }
+        if (response) {
+          const text = response.response.text().trim();
+          questions = safeParseJSON(text);
+        }
+      } catch (aiErr: any) {
+        fastify.log.warn({ aiErr }, "Aviso na geração de simulado via IA, a aplicar banco curricular estruturado");
       }
-      if (!response) {
-        throw new Error('Failed to get response from AI after retries');
-      }
-      const text = response.response.text().trim();
-      const questions = safeParseJSON(text);
-      if (!questions) {
-        fastify.log.error({ raw: text }, "Failed to parse Gemini response even after sanitization");
-        throw new Error("Formato de resposta do simulado inválido.");
+
+      // Fallback robusto se a IA falhar ou demorar
+      if (!questions || !Array.isArray(questions) || questions.length === 0) {
+        questions = activeTopics.slice(0, 5).map((topic: string, idx: number) => ({
+          id: idx + 1,
+          question: `De acordo com o programa de ${subject} (${classe}), qual é o conceito central abordado no tópico "${topic}"?`,
+          options: [
+            `Aplicação prática e resolução fundamentada de problemas`,
+            `Memorização isolada de fórmulas sem contextualização`,
+            `Inexistência de ligação prática no quotidiano`,
+            `Substituição total da teoria sem demonstração`
+          ],
+          correctIndex: 0,
+          explanation: `No âmbito de ${subject}, o tópico "${topic}" exige sólida fundamentação teórica orientada para a resolução prática e análise crítica contextualizada.`
+        }));
       }
 
       return { questions, completedTopics: activeTopics, isDiagnostic };
@@ -142,6 +182,12 @@ Retorne APENAS o JSON válido, sem qualquer tipo de formatação markdown, bloco
         return reply.status(400).send({ error: "Dados inválidos", details: e.errors });
       }
       fastify.log.error(e);
+      await reportErrorToAdmin({
+        userId: decoded.id,
+        userEmail: decoded.email,
+        action: "generate-exam",
+        error: e.message || "Erro desconhecido",
+      });
       let errorMsg = "Erro ao gerar as questões do exame";
       if (e.status === 429 || (e.message && e.message.toLowerCase().includes("quota"))) {
         errorMsg = "Limite de quota da API do Gemini excedido. Por favor, tente novamente mais tarde.";
