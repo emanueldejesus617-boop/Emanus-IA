@@ -3,17 +3,19 @@
 import { useEffect, useState, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import {
-  Rocket,
   Flame,
-  Sparkles,
   BookOpen,
-  FileText,
-  Clock,
-  ArrowRight,
-  GraduationCap,
+  ClipboardCheck,
   Calendar,
-  CheckCircle2,
-  TrendingUp
+  BarChart3,
+  Play,
+  ChevronRight,
+  ArrowRight,
+  Target,
+  TrendingUp,
+  Sparkles,
+  GraduationCap,
+  Code2
 } from "lucide-react";
 import { parseJsonResponse } from "@/lib/utils";
 
@@ -68,17 +70,6 @@ export default function DashboardPage() {
   const [history, setHistory] = useState<ExamHistory[]>([]);
   const [completedTopicsCount, setCompletedTopicsCount] = useState(0);
 
-  const getDaysUntilExams = () => {
-    const now = new Date();
-    const currentYear = now.getFullYear();
-    let examDate = new Date(currentYear, 10, 20); // 20 Nov
-    if (now.getTime() > examDate.getTime()) {
-      examDate = new Date(currentYear + 1, 10, 20);
-    }
-    const diffTime = examDate.getTime() - now.getTime();
-    return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-  };
-
   const loadUserData = useCallback(async () => {
     const token = localStorage.getItem("token");
     if (!token) {
@@ -129,7 +120,6 @@ export default function DashboardPage() {
     const token = localStorage.getItem("token");
     if (!token) return;
 
-    // Load exam history
     try {
       const res = await fetch("/api/exams/history", {
         headers: { Authorization: `Bearer ${token}` }
@@ -142,7 +132,6 @@ export default function DashboardPage() {
       console.error("Error loading dashboard exam history:", e);
     }
 
-    // Load completed topics progress
     try {
       const res = await fetch("/api/lessons/progress", {
         headers: { Authorization: `Bearer ${token}` }
@@ -176,244 +165,272 @@ export default function DashboardPage() {
   const subjects = useMemo(() => {
     return profile?.subjects && profile.subjects.length > 0
       ? profile.subjects
-      : ["Matemática", "Física", "História de Angola"];
+      : ["Informática", "Matemática", "Física", "Língua Portuguesa"];
   }, [profile]);
 
-  const xp = user?.xp || 0;
+  const currentSubject = subjects[0] || "Informática";
   const lessonsCompleted = completedTopicsCount;
-  const lessonsPercent = Math.min(100, Math.round((lessonsCompleted / 30) * 100));
-  const exercisesSolved = history.reduce((acc, curr) => acc + (curr.totalQuestions || 5), 0);
-  const streak = user?.streak || 0;
-
-  const getSubjectProgress = useCallback(
-    (sub: string) => {
-      const subExams = history.filter((h) => h.subject.toLowerCase() === sub.toLowerCase());
-      if (subExams.length === 0) return 0;
-      const totalScore = subExams.reduce((acc, h) => acc + h.score, 0);
-      const totalQuestions = subExams.reduce((acc, h) => acc + h.totalQuestions, 0);
-      return totalQuestions > 0 ? Math.round((totalScore / totalQuestions) * 100) : 0;
-    },
-    [history]
-  );
+  // Cálculo de percentagem com base nos tópicos ou padrão visual
+  const lessonsPercent = Math.max(15, Math.min(100, Math.round((lessonsCompleted / 24) * 100) || 25));
 
   if (!user) return null;
 
-  const daysUntilExams = getDaysUntilExams();
+  const firstName = user.name.split(" ")[0] || "Estudante";
 
   return (
     <div className="p-4 sm:p-8 pb-20 max-w-7xl mx-auto w-full animate-fade-in space-y-6 sm:space-y-8">
-      {/* Header Section */}
-      <header className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-6 border-b border-surface/40">
-        <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-2xl sm:text-3xl font-bold text-text tracking-tight">
-              Olá, {user.name}!
-            </h1>
-            <Sparkles className="w-5 h-5 text-primary shrink-0" />
-          </div>
-          <div className="flex flex-wrap items-center gap-2 mt-1.5 text-xs sm:text-sm text-muted">
-            <span className="inline-flex items-center gap-1.5 font-medium text-text">
-              <GraduationCap className="w-4 h-4 text-primary" />
-              {profile?.classe || "12.ª Classe"}
-            </span>
-            {profile?.curso && (
-              <>
-                <span className="text-muted/40">•</span>
-                <span>{profile.curso}</span>
-              </>
-            )}
-          </div>
-        </div>
-
-        {/* Exames Countdown Pill */}
-        <div className="flex items-center gap-3 bg-surface border border-muted/15 px-4 py-2.5 rounded-2xl shadow-sm self-stretch sm:self-auto justify-between sm:justify-start">
-          <div className="w-9 h-9 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary shrink-0">
-            <Clock className="w-4 h-4" />
-          </div>
-          <div>
-            <span className="text-[11px] font-medium text-muted block leading-none">Exames Finais</span>
-            <span className="text-base sm:text-lg font-bold text-primary leading-tight mt-0.5 block">
-              {daysUntilExams} {daysUntilExams === 1 ? "Dia" : "Dias"}
-            </span>
-          </div>
-        </div>
+      {/* 1. Saudação Superior */}
+      <header className="space-y-1">
+        <h1 className="text-2xl sm:text-3xl font-extrabold text-text tracking-tight flex items-center gap-2">
+          Olá, {firstName}! <span className="inline-block animate-bounce text-2xl sm:text-3xl">👋</span>
+        </h1>
+        <p className="text-xs sm:text-sm text-muted">
+          Bem-vindo de volta à Emanus IA. Vamos continuar a aprender?
+        </p>
       </header>
 
-      {/* Boas-vindas para novos alunos */}
-      {xp === 0 && history.length === 0 && (
-        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 rounded-2xl border border-primary/25 bg-primary/5 p-5 sm:p-6 shadow-sm">
-          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary text-dark font-bold">
-            <Rocket className="w-5 h-5" />
-          </div>
-          <div className="flex-1">
-            <h2 className="text-sm sm:text-base font-bold text-primary">Bem-vindo ao teu painel de estudo!</h2>
-            <p className="mt-1 text-xs sm:text-sm text-muted leading-relaxed">
-              O teu percurso começa agora. Inicia a tua primeira aula interativa com o Tutor IA ou testa os teus
-              conhecimentos nos simulados para acompanhar o teu progresso em tempo real.
+      {/* 2. Hero Banner: O teu futuro começa aqui! */}
+      <section className="relative overflow-hidden rounded-3xl border border-primary/20 bg-gradient-to-br from-surface via-surface to-[#0A1A2F] p-6 sm:p-10 shadow-xl">
+        {/* Glow de fundo sutil com as cores da marca */}
+        <div className="absolute top-0 right-0 -mt-10 -mr-10 w-72 h-72 rounded-full bg-primary/10 blur-3xl pointer-events-none" />
+        <div className="absolute bottom-0 right-1/4 -mb-10 w-64 h-64 rounded-full bg-secondary/10 blur-3xl pointer-events-none" />
+
+        <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-8">
+          {/* Lado Esquerdo: Textos e Botão */}
+          <div className="max-w-xl space-y-4 text-center md:text-left">
+            <h2 className="text-2xl sm:text-4xl font-extrabold text-text tracking-tight leading-tight">
+              O teu futuro começa <span className="text-primary font-black">aqui!</span>
+            </h2>
+            <p className="text-xs sm:text-base text-muted leading-relaxed">
+              Estuda com a Emanus IA e atinge os teus objetivos escolares com inteligência artificial adaptada ao currículo de Angola.
             </p>
-          </div>
-          <button
-            onClick={() => router.push("/dashboard/intelijai")}
-            className="w-full sm:w-auto px-4 py-2.5 bg-primary text-dark font-semibold text-xs rounded-xl hover:opacity-90 active:scale-98 transition-all cursor-pointer shrink-0"
-          >
-            Começar Agora
-          </button>
-        </div>
-      )}
 
-      {/* Grid de Métricas Principais (3 Colunas) */}
-      <section className="grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
-        {/* Card 1: Aulas Concluídas */}
-        <div className="rounded-2xl border border-surface bg-surface p-5 sm:p-6 shadow-sm space-y-3">
-          <div className="flex items-center justify-between">
-            <span className="text-xs sm:text-sm font-medium text-muted">Aulas Concluídas</span>
-            <div className="w-8 h-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
-              <BookOpen className="w-4 h-4" />
+            <div className="pt-2">
+              <button
+                onClick={() => router.push("/dashboard/lessons")}
+                className="inline-flex items-center gap-2.5 px-6 py-3.5 rounded-2xl bg-primary text-dark font-bold text-xs sm:text-sm hover:opacity-95 active:scale-98 transition-all cursor-pointer shadow-lg shadow-primary/20"
+              >
+                <Play className="w-4 h-4 fill-dark" />
+                <span>Explorar as Aulas</span>
+              </button>
             </div>
           </div>
-          <div>
-            <div className="flex items-baseline gap-2">
-              <span className="text-2xl sm:text-3xl font-black text-text">{lessonsCompleted}</span>
-              <span className="text-xs text-muted font-normal">tópicos concluídos</span>
-            </div>
-            <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-dark">
-              <div
-                className="h-full bg-primary transition-all duration-500 rounded-full"
-                style={{ width: `${Math.max(lessonsPercent, lessonsCompleted > 0 ? 5 : 0)}%` }}
-              />
-            </div>
-            <div className="flex justify-between items-center mt-2 text-[11px] text-muted">
-              <span>Meta do trimestre</span>
-              <span className="font-semibold text-text">{lessonsPercent}%</span>
-            </div>
-          </div>
-        </div>
 
-        {/* Card 2: Exercícios Resolvidos */}
-        <div className="rounded-2xl border border-surface bg-surface p-5 sm:p-6 shadow-sm space-y-3">
-          <div className="flex items-center justify-between">
-            <span className="text-xs sm:text-sm font-medium text-muted">Exercícios Resolvidos</span>
-            <div className="w-8 h-8 rounded-lg bg-secondary/10 text-secondary flex items-center justify-center">
-              <FileText className="w-4 h-4" />
-            </div>
-          </div>
-          <div>
-            <div className="flex items-baseline gap-2">
-              <span className="text-2xl sm:text-3xl font-black text-text">{exercisesSolved}</span>
-              <span className="text-xs text-muted font-normal">questões respondidas</span>
-            </div>
-            <div className="mt-3 flex items-center gap-2 text-xs font-semibold text-accent">
-              <TrendingUp className="w-3.5 h-3.5" />
-              <span>{xp} XP acumulados</span>
-            </div>
-            <p className="mt-1 text-[11px] text-muted">Pontos ganhos em simulados e aulas</p>
-          </div>
-        </div>
+          {/* Lado Direito: Ilustração de Livros + Cartola de Graduação + Frase */}
+          <div className="relative flex items-center justify-center shrink-0">
+            <div className="relative w-64 h-44 sm:w-80 sm:h-52 flex items-center justify-center">
+              {/* Ilustração SVG de Livros e Capelo */}
+              <svg viewBox="0 0 320 220" className="w-full h-full drop-shadow-2xl" fill="none" xmlns="http://www.w3.org/2000/svg">
+                {/* Livro Inferior (Verde Primário) */}
+                <path d="M40 160 C120 180 200 180 280 160 L280 178 C200 198 120 198 40 178 Z" fill="#065f49" />
+                <path d="M40 152 C120 172 200 172 280 152 L280 164 C200 184 120 184 40 164 Z" fill="#F3F4F6" />
+                <path d="M40 144 C120 164 200 164 280 144 L280 154 C200 174 120 174 40 154 Z" fill="#00C896" />
 
-        {/* Card 3: Sequência (Streak) */}
-        <div className="rounded-2xl border border-surface bg-surface p-5 sm:p-6 shadow-sm space-y-3 col-span-1 sm:col-span-2 lg:col-span-1">
-          <div className="flex items-center justify-between">
-            <span className="text-xs sm:text-sm font-medium text-muted">Dias Seguidos (Streak)</span>
-            <div className="w-8 h-8 rounded-lg bg-accent/10 text-accent flex items-center justify-center">
-              <Flame className="w-4 h-4" />
+                {/* Livro Médio (Azul Secundário) */}
+                <path d="M55 128 C125 146 195 146 265 128 L265 144 C195 162 125 162 55 144 Z" fill="#0035A8" />
+                <path d="M55 122 C125 138 195 138 265 122 L265 132 C195 148 125 148 55 132 Z" fill="#E5E7EB" />
+                <path d="M55 114 C125 130 195 130 265 114 L265 124 C195 140 125 140 55 124 Z" fill="#0052FF" />
+
+                {/* Capelo / Cartola Académica */}
+                {/* Base inferior do chapéu */}
+                <path d="M125 80 C125 105 195 105 195 80 L195 90 C195 115 125 115 125 90 Z" fill="#0F172A" />
+                {/* Faixa dourada */}
+                <path d="M125 88 C125 96 195 96 195 88 L195 92 C195 100 125 100 125 92 Z" fill="#FFB800" />
+                {/* Losango superior */}
+                <polygon points="160,35 245,68 160,98 75,68" fill="#1E293B" stroke="#334155" strokeWidth="2" />
+                <polygon points="160,38 240,68 160,94 80,68" fill="#0F172A" />
+
+                {/* Botão e Fita do Capelo */}
+                <circle cx="160" cy="66" r="4.5" fill="#FFB800" />
+                <path d="M160 66 Q205 75 220 110" stroke="#FFB800" strokeWidth="3" fill="none" strokeLinecap="round" />
+                {/* Pompom dourado */}
+                <ellipse cx="220" cy="115" rx="5" ry="8" fill="#FFB800" />
+
+                {/* Brilhos decorativos sutis */}
+                <path d="M60 70 L65 73 L62 78 L59 73 Z" fill="#00C896" opacity="0.8" />
+                <path d="M260 45 L265 48 L262 53 L259 48 Z" fill="#0052FF" opacity="0.8" />
+                <circle cx="270" cy="85" r="2.5" fill="#FFB800" />
+              </svg>
+
+              {/* Calligraphy / Frase "Aprender é poder!" */}
+              <div className="absolute -top-3 sm:-top-5 -right-2 sm:-right-4 rotate-6 select-none pointer-events-none">
+                <span className="text-lg sm:text-2xl font-black italic tracking-wide text-transparent bg-clip-text bg-gradient-to-r from-primary via-accent to-secondary drop-shadow">
+                  Aprender é poder!
+                </span>
+                <div className="w-full h-1 bg-gradient-to-r from-primary to-accent rounded-full mt-0.5 opacity-80" />
+              </div>
             </div>
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="text-2xl sm:text-3xl font-black text-text">{streak}</span>
-              <Flame className="w-6 h-6 text-accent shrink-0" />
-            </div>
-            <p className="mt-3 text-xs font-medium text-text">
-              {streak > 0 ? "Ritmo ativo! Continua firme." : "Inicia hoje a tua sequência de estudo!"}
-            </p>
-            <p className="mt-1 text-[11px] text-muted">Estuda diariamente para manter o streak aceso</p>
           </div>
         </div>
       </section>
 
-      {/* Sessão de Ação & Desempenho (2 Colunas) */}
-      <section className="grid gap-6 sm:gap-8 grid-cols-1 lg:grid-cols-2">
-        {/* Card Esquerdo: Próxima Aula / Estudar com a IA */}
-        <div className="space-y-4">
-          <h2 className="text-base sm:text-lg font-bold text-text flex items-center gap-2">
-            <BookOpen className="w-4 h-4 text-primary" /> A tua próxima sessão de estudo
-          </h2>
+      {/* 3. Grade de 4 Ações Rápidas (Aulas, Simulados, Gerar Horário, Meu Progresso) */}
+      <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Card 1: Aulas */}
+        <div
+          onClick={() => router.push("/dashboard/lessons")}
+          className="group rounded-2xl border border-muted/15 bg-surface p-4 sm:p-5 shadow-sm hover:border-primary/40 hover:shadow-md transition-all cursor-pointer flex items-center justify-between"
+        >
+          <div className="flex items-center gap-3.5">
+            <div className="w-12 h-12 rounded-2xl bg-blue-500/10 border border-blue-500/20 text-blue-400 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+              <BookOpen className="w-5 h-5 text-blue-400" />
+            </div>
+            <div>
+              <h3 className="text-sm font-bold text-text group-hover:text-primary transition-colors">Aulas</h3>
+              <p className="text-[11px] text-muted mt-0.5">Estude com qualidade</p>
+            </div>
+          </div>
+          <ChevronRight className="w-4 h-4 text-muted group-hover:text-text group-hover:translate-x-0.5 transition-all shrink-0" />
+        </div>
 
-          <div className="rounded-2xl border border-surface bg-surface p-5 sm:p-6 shadow-sm flex flex-col justify-between space-y-5">
-            <div className="space-y-2.5">
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-secondary/10 text-secondary border border-secondary/20">
-                  {subjects[0]}
+        {/* Card 2: Simulados */}
+        <div
+          onClick={() => router.push("/dashboard/exams")}
+          className="group rounded-2xl border border-muted/15 bg-surface p-4 sm:p-5 shadow-sm hover:border-purple-500/40 hover:shadow-md transition-all cursor-pointer flex items-center justify-between"
+        >
+          <div className="flex items-center gap-3.5">
+            <div className="w-12 h-12 rounded-2xl bg-purple-500/10 border border-purple-500/20 text-purple-400 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+              <ClipboardCheck className="w-5 h-5 text-purple-400" />
+            </div>
+            <div>
+              <h3 className="text-sm font-bold text-text group-hover:text-purple-400 transition-colors">Simulados</h3>
+              <p className="text-[11px] text-muted mt-0.5">Teste os seus conhecimentos</p>
+            </div>
+          </div>
+          <ChevronRight className="w-4 h-4 text-muted group-hover:text-text group-hover:translate-x-0.5 transition-all shrink-0" />
+        </div>
+
+        {/* Card 3: Gerar Horário */}
+        <div
+          onClick={() => router.push("/dashboard/schedule")}
+          className="group rounded-2xl border border-muted/15 bg-surface p-4 sm:p-5 shadow-sm hover:border-emerald-500/40 hover:shadow-md transition-all cursor-pointer flex items-center justify-between"
+        >
+          <div className="flex items-center gap-3.5">
+            <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+              <Calendar className="w-5 h-5 text-emerald-400" />
+            </div>
+            <div>
+              <h3 className="text-sm font-bold text-text group-hover:text-emerald-400 transition-colors">Gerar Horário</h3>
+              <p className="text-[11px] text-muted mt-0.5">Organize o seu estudo</p>
+            </div>
+          </div>
+          <ChevronRight className="w-4 h-4 text-muted group-hover:text-text group-hover:translate-x-0.5 transition-all shrink-0" />
+        </div>
+
+        {/* Card 4: Meu Progresso */}
+        <div
+          onClick={() => router.push("/dashboard/exams")}
+          className="group rounded-2xl border border-muted/15 bg-surface p-4 sm:p-5 shadow-sm hover:border-primary/40 hover:shadow-md transition-all cursor-pointer flex items-center justify-between"
+        >
+          <div className="flex items-center gap-3.5">
+            <div className="w-12 h-12 rounded-2xl bg-primary/10 border border-primary/20 text-primary flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+              <BarChart3 className="w-5 h-5 text-primary" />
+            </div>
+            <div>
+              <h3 className="text-sm font-bold text-text group-hover:text-primary transition-colors">Meu Progresso</h3>
+              <p className="text-[11px] text-muted mt-0.5">Acompanhe a sua evolução</p>
+            </div>
+          </div>
+          <ChevronRight className="w-4 h-4 text-muted group-hover:text-text group-hover:translate-x-0.5 transition-all shrink-0" />
+        </div>
+      </section>
+
+      {/* 4. Linha Inferior: Continue aprendendo + Os teus objetivos */}
+      <section className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        {/* Card Esquerdo: Continue aprendendo (7 Colunas) */}
+        <div className="lg:col-span-7 rounded-3xl border border-muted/15 bg-surface p-5 sm:p-7 shadow-sm space-y-5 flex flex-col justify-between">
+          {/* Cabeçalho do Card */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Flame className="w-5 h-5 text-orange-500 fill-orange-500/20" />
+              <h3 className="text-base sm:text-lg font-bold text-text">Continue aprendendo</h3>
+            </div>
+            <button
+              onClick={() => router.push("/dashboard/lessons")}
+              className="inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline cursor-pointer"
+            >
+              <span>Ver todas</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </button>
+          </div>
+
+          {/* Conteúdo Principal do Card */}
+          <div className="flex flex-col sm:flex-row items-center gap-5">
+            {/* Thumbnail com Badge e Ícone */}
+            <div className="relative w-full sm:w-48 h-32 rounded-2xl bg-gradient-to-br from-dark to-[#0E1726] border border-muted/20 flex flex-col items-center justify-center p-3 shrink-0 shadow-inner overflow-hidden">
+              <div className="absolute top-2.5 left-2.5">
+                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-primary text-dark">
+                  {currentSubject}
                 </span>
-                <span className="text-xs text-muted font-medium">• {profile?.classe || "12.ª Classe"}</span>
               </div>
-
-              <h3 className="text-base sm:text-lg font-bold text-text leading-snug">
-                Introdução e Tópicos Fundamentais
-              </h3>
-              <p className="text-xs sm:text-sm text-muted leading-relaxed">
-                Tira dúvidas em tempo real, compreende fórmulas e analisa conceitos de forma adaptada ao currículo de Angola.
-              </p>
+              <div className="w-12 h-12 rounded-xl bg-surface/80 border border-muted/20 flex items-center justify-center text-primary shadow-sm mt-3">
+                <Code2 className="w-6 h-6 text-primary" />
+              </div>
+              <span className="text-[10px] text-muted font-mono mt-2">{profile?.classe || "12.ª Classe"}</span>
             </div>
 
-            <div className="pt-2 flex flex-col sm:flex-row gap-3">
-              <button
-                onClick={() => router.push("/dashboard/intelijai")}
-                className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-5 py-3 text-xs sm:text-sm font-semibold text-dark hover:opacity-90 active:scale-98 transition-all cursor-pointer shadow-sm shadow-primary/20"
-              >
-                <span>Iniciar Aula com Tutor IA</span>
-                <ArrowRight className="w-4 h-4" />
-              </button>
-
-              <button
-                onClick={() => router.push("/dashboard/schedule")}
-                className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-muted/20 px-4 py-3 text-xs font-semibold text-text hover:bg-dark hover:border-muted/30 active:scale-98 transition-all cursor-pointer"
-              >
-                <Calendar className="w-3.5 h-3.5 text-muted" />
-                <span>Horário</span>
-              </button>
+            {/* Informações da Aula e CTA */}
+            <div className="flex-1 space-y-2 text-center sm:text-left w-full">
+              <h4 className="text-base font-bold text-text">
+                Introdução à {currentSubject}
+              </h4>
+              <p className="text-xs text-muted leading-relaxed">
+                Aprenda os conceitos básicos desta disciplina de forma simples e prática com explicações inteligentes.
+              </p>
+              <div className="pt-2">
+                <button
+                  onClick={() => router.push("/dashboard/intelijai")}
+                  className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-primary text-dark font-bold text-xs hover:opacity-95 active:scale-98 transition-all cursor-pointer shadow-md shadow-primary/10"
+                >
+                  <Play className="w-3.5 h-3.5 fill-dark" />
+                  <span>Continuar aula</span>
+                </button>
+              </div>
             </div>
           </div>
         </div>
 
-        {/* Card Direito: Aproveitamento nos Simulados */}
-        <div className="space-y-4">
+        {/* Card Direito: Os teus objetivos (5 Colunas) */}
+        <div className="lg:col-span-5 rounded-3xl border border-muted/15 bg-gradient-to-br from-surface to-[#0A1A24] p-5 sm:p-7 shadow-sm space-y-5 flex flex-col justify-between">
+          {/* Cabeçalho */}
           <div className="flex items-center justify-between">
-            <h2 className="text-base sm:text-lg font-bold text-text flex items-center gap-2">
-              <TrendingUp className="w-4 h-4 text-secondary" /> Aproveitamento nos Simulados
-            </h2>
-            <button
-              onClick={() => router.push("/dashboard/exams")}
-              className="text-xs font-semibold text-primary hover:underline cursor-pointer"
-            >
-              Fazer Simulado
-            </button>
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center justify-center">
+                <Target className="w-4 h-4 text-emerald-400" />
+              </div>
+              <h3 className="text-base sm:text-lg font-bold text-text">Os teus objetivos</h3>
+            </div>
+            <div className="w-8 h-8 rounded-xl bg-primary/10 text-primary flex items-center justify-center">
+              <TrendingUp className="w-4 h-4 text-primary" />
+            </div>
           </div>
 
-          <div className="rounded-2xl border border-surface bg-surface p-5 sm:p-6 shadow-sm space-y-4">
-            {subjects.map((sub: string, i: number) => {
-              const colors = ["bg-primary", "bg-secondary", "bg-accent", "bg-emerald-500", "bg-purple-500", "bg-sky-500"];
-              const textColors = ["text-primary", "text-secondary", "text-accent", "text-emerald-500", "text-purple-500", "text-sky-500"];
-              const colorIdx = i % colors.length;
-              const subProgress = getSubjectProgress(sub);
+          {/* Mensagem motivacional e progresso */}
+          <div className="space-y-3">
+            <p className="text-xs sm:text-sm font-semibold text-text">
+              Continua firme! Tu consegues!
+            </p>
 
-              return (
-                <div key={i} className="space-y-1.5">
-                  <div className="flex justify-between items-center text-xs sm:text-sm">
-                    <span className="font-semibold text-text truncate pr-2">{sub}</span>
-                    <span className={`shrink-0 font-bold ${textColors[colorIdx]}`}>
-                      {subProgress === 0 ? "Sem dados" : `${subProgress}%`}
-                    </span>
-                  </div>
-                  <div className="h-2 w-full bg-dark rounded-full overflow-hidden">
-                    <div
-                      className={`h-full ${colors[colorIdx]} transition-all duration-500 rounded-full`}
-                      style={{ width: `${Math.max(subProgress, subProgress > 0 ? 4 : 0)}%` }}
-                    />
-                  </div>
-                </div>
-              );
-            })}
+            <div className="space-y-1.5">
+              <div className="flex justify-between items-center text-xs">
+                <span className="text-muted font-medium">Progresso geral</span>
+                <span className="font-bold text-primary">{lessonsPercent}%</span>
+              </div>
+              <div className="h-2.5 w-full bg-dark rounded-full overflow-hidden p-0.5 border border-muted/10">
+                <div
+                  className="h-full bg-gradient-to-r from-primary to-[#00E5A3] rounded-full transition-all duration-700"
+                  style={{ width: `${lessonsPercent}%` }}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Citação Inspiracional */}
+          <div className="pt-2 text-center border-t border-muted/10">
+            <p className="text-xs italic text-muted">
+              &ldquo;Grandes conquistas começam com um pequeno passo.&rdquo;
+            </p>
+            <div className="w-16 h-0.5 bg-primary/60 rounded-full mx-auto mt-2" />
           </div>
         </div>
       </section>
