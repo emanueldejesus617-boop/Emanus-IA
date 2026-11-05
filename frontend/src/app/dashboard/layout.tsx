@@ -28,6 +28,7 @@ import {
   Download
 } from "lucide-react";
 import { Logo } from "@/components/logo";
+import { PWAInstallButton } from "@/components/pwa-install-button";
 import { auth } from "@/lib/firebase";
 import { signOut } from "firebase/auth";
 import { parseJsonResponse } from "@/lib/utils";
@@ -718,16 +719,12 @@ export default function DashboardLayout({
                 </button>
 
                 {/* Botão Descarregar App */}
-                <a
-                  href="https://emanueldejesus617-boop.github.io/emanus-app-download/"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  onClick={() => setProfileMenuOpen(false)}
-                  className="w-full flex items-center gap-3 rounded-lg px-3 py-2 text-xs font-semibold hover:bg-dark text-text transition-all cursor-pointer"
-                >
-                  <Download className="w-4 h-4 text-primary flex-shrink-0" />
-                  <span>Descarregar App</span>
-                </a>
+                <div onClick={() => setProfileMenuOpen(false)}>
+                  <PWAInstallButton
+                    variant="sidebar"
+                    className="w-full flex items-center gap-3 rounded-lg px-3 py-2 text-xs font-semibold hover:bg-dark text-text transition-all cursor-pointer"
+                  />
+                </div>
 
                 <div className="h-px bg-muted/10" />
 
