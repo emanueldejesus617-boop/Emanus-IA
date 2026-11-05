@@ -3,6 +3,7 @@ import "./globals.css";
 import { ThemeProvider } from "@/components/theme-provider";
 import { CookieBanner } from "@/components/cookie-banner";
 import { PWARegister } from "@/components/pwa-register";
+import { MobileAppDownloadNotification } from "@/components/mobile-app-download-notification";
 
 export const metadata: Metadata = {
   title: "Emanus IA | O teu professor",
@@ -51,6 +52,7 @@ export default function RootLayout({
           {children}
           <CookieBanner />
           <PWARegister />
+          <MobileAppDownloadNotification />
         </ThemeProvider>
       </body>
     </html>

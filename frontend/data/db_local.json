@@ -420,6 +420,22 @@
       "role": "model",
       "content": "Ah, o Dewers Matari! Ele é um dos talentosos colaboradores que faz parte da equipa da Emanus.\n\nEnquanto os quatro fundadores (Emanuel De Jesus, Guido Alfredo, Daniel Taba e Emanuel André) lideram a visão e a estratégia da startup, a Emanus também conta com a dedicação de outros profissionais que contribuem para o desenvolvimento e crescimento dos projetos. O **Dewers Matari** é um desses colaboradores e tem um papel importante na **programação** das soluções da Emanus.\n\nEle, assim como outros membros da equipa, ajuda a transformar as ideias e os conceitos em produtos digitais reais, como eu, a Emanus IA, sou um exemplo. É o trabalho conjunto de todos que permite à Emanus desenvolver tecnologia e alcançar a sua missão.",
       "createdAt": "2026-11-05T04:44:26.546Z"
+    },
+    "7ee04b1d-db44-48c0-a122-49604f7aa709": {
+      "id": "7ee04b1d-db44-48c0-a122-49604f7aa709",
+      "conversationId": "80d24470-a2de-4ab9-b5e5-df9d9cd26c37",
+      "role": "user",
+      "content": "e existe outros colaboradores?",
+      "mediaData": null,
+      "mediaType": null,
+      "createdAt": "2026-11-05T04:46:12.923Z"
+    },
+    "365355b1-1f8c-4208-99d0-72c2f84e6edf": {
+      "id": "365355b1-1f8c-4208-99d0-72c2f84e6edf",
+      "conversationId": "80d24470-a2de-4ab9-b5e5-df9d9cd26c37",
+      "role": "model",
+      "content": "Sim, claro! Além dos fundadores e do Dewers Matari na programação, a Emanus conta com outros colaboradores que são igualmente importantes para o desenvolvimento, crescimento, comunicação e evolução dos seus projetos.\n\nEntre esses colaboradores, posso destacar a **Viviane Ambrósio**. O texto que descreve a Emanus menciona-a como um dos nomes que participam ativamente na equipa.\n\nE, para além dela, existem \"demais colaboradores\" – o que significa que a equipa é composta por várias pessoas que contribuem com os seus talentos e dedicação em diferentes áreas, garantindo que a visão da Emanus se torne realidade e que os seus projetos, como eu, continuem a evoluir e a ter um impacto positivo. É um verdadeiro trabalho de equipa!",
+      "createdAt": "2026-11-05T04:46:26.621Z"
     }
   },
   "company_info": {
