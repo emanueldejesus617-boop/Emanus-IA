@@ -24,8 +24,10 @@ export async function adminRoutes(fastify: FastifyInstance) {
       const usersSnapshot = await firestore.collection("users").get();
       const allUsers = usersSnapshot.docs.map(doc => doc.data() as any);
       
-      const students = allUsers.filter(u => u.role === "student");
+      const totalUsers = allUsers.length;
+      const students = allUsers.filter(u => u.role !== "admin" && u.email !== "emanueldejesus617@gmail.com");
       const totalStudents = students.length;
+      const totalAdmins = allUsers.filter(u => u.role === "admin" || u.email === "emanueldejesus617@gmail.com").length;
 
       const totalXp = students.reduce((acc, curr) => acc + (curr.xp || 0), 0);
       const averageXp = students.length > 0 ? Math.round(totalXp / students.length) : 0;
@@ -41,7 +43,9 @@ export async function adminRoutes(fastify: FastifyInstance) {
       const unresolvedErrors = errorsSnapshot.size;
 
       return {
+        totalUsers,
         totalStudents,
+        totalAdmins,
         averageXp,
         totalExams,
         totalCompletedTopics,
@@ -53,36 +57,39 @@ export async function adminRoutes(fastify: FastifyInstance) {
     }
   });
 
-  // GET /users - List of students (inclui todas as contas recém-criadas sem perda)
+  // GET /users - List of all registered accounts (todas as contas registradas na base de dados)
   fastify.get("/users", async (request, reply) => {
     const admin = await authorizeAdmin(request, reply);
     if (!admin) return;
 
     try {
-      // Usa get() completo para garantir merge com contas locais recém-criadas
       const snapshot = await firestore.collection("users").get();
 
-      const students = snapshot.docs
-        .map(doc => {
-          const u = doc.data() as any;
-          return {
-            id: doc.id,
-            name: u.name || "Sem nome",
-            email: u.email || "",
-            role: u.role || "student",
-            classe: u.classe || null,
-            curso: u.curso || null,
-            xp: u.xp || 0,
-            streak: u.streak || 0,
-            createdAt: u.createdAt || new Date().toISOString(),
-            lastLoginAt: u.lastLoginAt || null
-          };
-        })
-        .filter((u: any) => u.role !== "admin" && u.email !== "emanueldejesus617@gmail.com");
+      const usersList = snapshot.docs.map(doc => {
+        const u = doc.data() as any;
+        const isAdmin = u.role === "admin" || u.email === "emanueldejesus617@gmail.com";
+        return {
+          id: doc.id,
+          name: u.name || "Sem nome",
+          email: u.email || "",
+          role: isAdmin ? "admin" : (u.role || "student"),
+          classe: u.classe || null,
+          curso: u.curso || null,
+          xp: u.xp || 0,
+          streak: u.streak || 0,
+          createdAt: u.createdAt || new Date().toISOString(),
+          lastLoginAt: u.lastLoginAt || null
+        };
+      });
 
-      students.sort((a, b) => (b.xp || 0) - (a.xp || 0));
+      // Ordenar: primeiro administradores, depois por XP decrescente
+      usersList.sort((a, b) => {
+        if (a.role === "admin" && b.role !== "admin") return -1;
+        if (b.role === "admin" && a.role !== "admin") return 1;
+        return (b.xp || 0) - (a.xp || 0);
+      });
 
-      return students;
+      return usersList;
     } catch (e: any) {
       fastify.log.error(e);
       return reply.status(500).send({ error: "Erro ao obter lista de utilizadores" });

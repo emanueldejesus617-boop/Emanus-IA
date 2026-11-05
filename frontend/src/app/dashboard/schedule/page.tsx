@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { Bot, ArrowLeft, ArrowRight, Bell } from "lucide-react";
+import { useToast } from "@/components/toast";
 import {
   syncStudySchedule,
   requestNotificationPermission,
@@ -110,6 +111,7 @@ const SHIFT_OPTIONS = [
 ];
 
 export default function SchedulePage() {
+  const { toast } = useToast();
   const [step, setStep] = useState<"select-shift" | "table">("select-shift");
   const [selectedShift, setSelectedShift] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -216,9 +218,12 @@ export default function SchedulePage() {
         setStep("table");
         syncStudySchedule(data.weekData);
         checkAndTriggerStudyNotifications(data.weekData);
+        toast.success("Horário gerado", "O teu plano de estudos semanal foi criado com sucesso!");
       }
     } catch (err: any) {
-      setError(err.message || "Erro de ligação ao servidor.");
+      const msg = err.message || "Erro de ligação ao servidor.";
+      setError(msg);
+      toast.error("Erro ao gerar horário", msg);
     } finally {
       setIsGenerating(false);
     }
@@ -253,9 +258,12 @@ export default function SchedulePage() {
       setEditMode(false);
       setEditingCell(null);
       setSaveSuccess(true);
+      toast.success("Horário atualizado", "As tuas alterações foram gravadas.");
       setTimeout(() => setSaveSuccess(false), 3000);
     } catch (err: any) {
-      setError(err.message || "Erro ao guardar edições.");
+      const msg = err.message || "Erro ao guardar edições.";
+      setError(msg);
+      toast.error("Erro ao guardar", msg);
     } finally {
       setIsSaving(false);
     }

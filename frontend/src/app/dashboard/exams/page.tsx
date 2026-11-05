@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { FileText, Check, BookOpen, BarChart3, GraduationCap, Trophy, Flame, X } from "lucide-react";
+import { useToast } from "@/components/toast";
 
 type Question = {
   id: number;
@@ -24,6 +25,7 @@ type ExamResult = {
 
 export default function ExamsPage() {
   const router = useRouter();
+  const { toast } = useToast();
   const [profile, setProfile] = useState<{ subjects?: string[]; classe?: string; curso?: string } | null>(null);
   const [selectedSubject, setSelectedSubject] = useState("");
   const [questions, setQuestions] = useState<Question[]>([]);
@@ -137,6 +139,7 @@ export default function ExamsPage() {
     } catch (err) {
       const errMsg = err instanceof Error ? err.message : "Erro de ligação ao servidor.";
       setError(errMsg);
+      toast.error("Erro ao gerar perguntas", errMsg);
       setGameState("setup");
     }
   };
@@ -218,6 +221,7 @@ export default function ExamsPage() {
       setGameState("finished");
     } catch (err) {
       console.error("Error grading exam:", err);
+      toast.warning("Nota guardada localmente", "Não foi possível sincronizar o histórico na nuvem.");
       setGameState("finished"); // Fallback to complete even if DB save fails
     }
   };

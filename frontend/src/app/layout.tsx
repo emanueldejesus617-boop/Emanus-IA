@@ -4,6 +4,7 @@ import { ThemeProvider } from "@/components/theme-provider";
 import { CookieBanner } from "@/components/cookie-banner";
 import { PWARegister } from "@/components/pwa-register";
 import { MobileAppDownloadNotification } from "@/components/mobile-app-download-notification";
+import { ToastProvider } from "@/components/toast";
 
 export const metadata: Metadata = {
   title: "Emanus IA | O teu professor",
@@ -49,10 +50,12 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          {children}
-          <CookieBanner />
-          <PWARegister />
-          <MobileAppDownloadNotification />
+          <ToastProvider>
+            {children}
+            <CookieBanner />
+            <PWARegister />
+            <MobileAppDownloadNotification />
+          </ToastProvider>
         </ThemeProvider>
       </body>
     </html>

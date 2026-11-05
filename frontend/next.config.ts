@@ -11,6 +11,14 @@ const shouldRewrite = backendUrl && (!isVercel || (!backendUrl.includes("localho
 
 const nextConfig: NextConfig = {
   outputFileTracingRoot: monorepoRoot,
+  compress: true,
+  poweredByHeader: false,
+  experimental: {
+    optimizePackageImports: ['lucide-react', 'framer-motion'],
+  },
+  images: {
+    formats: ['image/avif', 'image/webp'],
+  },
   eslint: {
     ignoreDuringBuilds: true,
   },

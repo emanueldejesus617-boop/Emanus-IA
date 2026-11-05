@@ -29,6 +29,7 @@ import {
 } from "lucide-react";
 import { Logo } from "@/components/logo";
 import { InstallAppButton } from "@/components/install-app-button";
+import { useToast } from "@/components/toast";
 import { auth } from "@/lib/firebase";
 import { signOut } from "firebase/auth";
 import { parseJsonResponse } from "@/lib/utils";
@@ -62,6 +63,7 @@ export default function DashboardLayout({
 }) {
   const pathname = usePathname();
   const router = useRouter();
+  const { toast } = useToast();
   const [user, setUser] = useState<User | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
@@ -309,6 +311,7 @@ export default function DashboardLayout({
     } catch (err) {
       console.warn("Aviso ao encerrar sessão no Firebase:", err);
     }
+    toast.info("Sessão terminada", "Até à próxima sessão de estudos!");
     router.push("/");
   };
 
@@ -417,12 +420,15 @@ export default function DashboardLayout({
       }
 
       setProfileSuccess("Perfil atualizado com sucesso!");
+      toast.success("Perfil atualizado", "As tuas informações foram guardadas.");
       setTimeout(() => {
         setProfileModalOpen(false);
         setProfileSuccess("");
       }, 900);
     } catch (err: any) {
-      setProfileError(err.message || "Não foi possível guardar as alterações.");
+      const msg = err.message || "Não foi possível guardar as alterações.";
+      setProfileError(msg);
+      toast.error("Erro ao guardar", msg);
     } finally {
       setSavingProfile(false);
     }
@@ -448,11 +454,12 @@ export default function DashboardLayout({
       });
       setBugSuccess(true);
       setBugDescription("");
+      toast.success("Relatório enviado", "Obrigado! A equipa técnica irá analisar a situação.");
       setTimeout(() => {
         setBugSuccess(false);
       }, 4000);
-    } catch {
-      // Silencioso
+    } catch (err: any) {
+      toast.error("Erro ao enviar relatório", "Por favor tenta novamente dentro de momentos.");
     } finally {
       setBugSending(false);
     }
