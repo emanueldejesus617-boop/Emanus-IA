@@ -1,6 +1,6 @@
 export interface FounderProfile {
   name: string;
-  age: number;
+  age?: number;
   role: string;
   title: string;
   education: {
@@ -89,12 +89,26 @@ export const EMANUS_STARTUP_INFO: StartupInfo = {
       vision:
         "O seu objetivo é ajudar a construir uma empresa tecnológica que não apenas acompanhe a evolução da tecnologia, mas que também desenvolva soluções capazes de resolver problemas reais em Angola e, futuramente, em outros mercados africanos.",
     },
+    {
+      name: "Emanuel André",
+      role: "Co-fundador",
+      title: "Co-fundador | Membro da equipa Emanus",
+      education: {
+        level: "11.ª classe do curso de Informática",
+        school: "Instituto Médio Politécnico Privado de Línguas, Culturas e Ciências",
+      },
+      areas: ["Informática", "Tecnologia", "Inovação", "Desenvolvimento"],
+      biography:
+        "Emanuel André é estudante da 11.ª classe do curso de Informática no Instituto Médio Politécnico Privado de Línguas, Culturas e Ciências. É um jovem que partilha os mesmos sonhos, ambições e visão de futuro dos demais membros da equipa Emanus, acreditando no poder da tecnologia como ferramenta de transformação da sociedade. Movido pela vontade de aprender, crescer e contribuir para o desenvolvimento tecnológico de Angola, integra a equipa Emanus com o propósito de participar na construção de soluções inovadoras capazes de responder a problemas reais. Acredita que a juventude tem um papel fundamental na construção do futuro e que, através da dedicação, colaboração e determinação, é possível transformar ideias em projetos com impacto positivo. Na Emanus, Emanuel André representa uma geração de jovens que não quer apenas acompanhar a evolução tecnológica, mas também fazer parte dela.",
+      vision:
+        "Acredita que a juventude tem um papel fundamental na construção do futuro e que, através da dedicação, colaboração e determinação, é possível transformar ideias em projetos com impacto positivo. Na Emanus, Emanuel André representa uma geração de jovens que não quer apenas acompanhar a evolução tecnológica, mas também fazer parte dela.",
+    },
   ],
   sharedVision:
-    "Apesar de desempenharem funções diferentes, Emanuel, Guido e Daniel compartilham a mesma visão: utilizar a tecnologia para construir soluções para problemas reais e contribuir para que Angola tenha cada vez mais jovens envolvidos na criação de tecnologia. Ainda como estudantes da 12ª classe, os três decidiram transformar essa visão em ação através da Emanus. A ambição da equipa é crescer e tornar a Emanus uma das referências tecnológicas de Angola na criação de soluções inovadoras e úteis para a sociedade.",
+    "Apesar de desempenharem funções e estarem em etapas de ensino complementares, Emanuel De Jesus, Guido Alfredo, Daniel Taba e Emanuel André compartilham a mesma visão: utilizar a tecnologia para construir soluções para problemas reais e contribuir para que Angola tenha cada vez mais jovens envolvidos na criação de tecnologia. Ainda como estudantes do Instituto Médio Politécnico Privado de Línguas, Culturas e Ciências, os fundadores decidiram transformar essa visão em ação através da Emanus. A ambição da equipa é crescer e tornar a Emanus uma das referências tecnológicas de Angola na criação de soluções inovadoras e úteis para a sociedade.",
   team: {
     description:
-      "Atualmente, além dos três fundadores, a Emanus conta também com outros colaboradores que participam no desenvolvimento, crescimento, comunicação e evolução dos seus projetos.",
+      "Atualmente, além dos quatro fundadores, a Emanus conta também com outros colaboradores que participam no desenvolvimento, crescimento, comunicação e evolução dos seus projetos.",
     notableContributors: [
       "Dewers Matari (Programação e Contribuição Técnica)",
       "Viviane Ambrósio (Colaboração e Apoio de Projeto)",
@@ -110,8 +124,8 @@ export const EMANUS_SYSTEM_KNOWLEDGE = `
 INFORMAÇÃO INSTITUCIONAL DA EMANUS (BASE DE DADOS DE CONHECIMENTO):
 - **Emanus**: É uma startup angolana de tecnologia focada no desenvolvimento de soluções digitais que respondem a desafios reais da sociedade.
 - **Primeiro Produto (Emanus IA)**: O primeiro produto da Emanus é a **Emanus IA**, uma plataforma educacional criada para ajudar estudantes a aprender de forma mais acessível, personalizada e prática. A plataforma procura ir além de simplesmente responder perguntas, oferecendo ferramentas que acompanham o estudante durante a sua jornada de aprendizagem.
-- **Fundadores**: A Emanus foi fundada e desenvolvida inicialmente por **três jovens angolanos** — **Emanuel De Jesus, Guido Alfredo e Daniel Taba** — estudantes da 12ª classe de Informática no Instituto Médio Politécnico Privado de Línguas, Culturas e Ciências.
-- **Equipa e Colaboradores**: Atualmente, além dos três fundadores, a Emanus conta também com **outros colaboradores** (como Dewers Matari na programação, Viviane Ambrósio e demais colaboradores) que participam no desenvolvimento, crescimento, comunicação e evolução dos seus projetos.
+- **Fundadores e Co-fundadores**: A Emanus conta com **quatro jovens angolanos** como fundadores e co-fundadores — **Emanuel De Jesus, Guido Alfredo, Daniel Taba e Emanuel André** — estudantes de Informática no Instituto Médio Politécnico Privado de Línguas, Culturas e Ciências.
+- **Equipa e Colaboradores**: Atualmente, além dos quatro fundadores, a Emanus conta também com **outros colaboradores** (como Dewers Matari na programação, Viviane Ambrósio e demais colaboradores) que participam no desenvolvimento, crescimento, comunicação e evolução dos seus projetos.
 - **Visão de Futuro**: Essa equipa continua a trabalhar para transformar a Emanus numa empresa de tecnologia capaz de criar soluções relevantes para Angola e, futuramente, para outros países de África.
 - **Propósito Central**: Mais do que uma plataforma, a Emanus representa a visão de jovens que acreditam que **a tecnologia pode ser criada em Angola para resolver problemas de Angola**.
 - **Lema**: "**Emanus — tecnologia criada por jovens, para transformar o futuro.**"
@@ -141,11 +155,18 @@ BIOGRAFIAS DOS FUNDADORES (usa estas informações quando alguém perguntar sobr
 - Tem interesse por tecnologia, empreendedorismo, comunicação e desenvolvimento de projetos.
 - Objetivo: ajudar a construir uma empresa tecnológica que desenvolva soluções para problemas reais em Angola e, futuramente, em outros mercados africanos.
 
-**Visão partilhada pelos três fundadores:**
-Apesar de desempenharem funções diferentes, Emanuel, Guido e Daniel compartilham a mesma visão: utilizar a tecnologia para construir soluções para problemas reais e contribuir para que Angola tenha cada vez mais jovens envolvidos na criação de tecnologia. Ainda como estudantes da 12ª classe, decidiram transformar essa visão em ação através da Emanus. A ambição da equipa é crescer e tornar a Emanus uma das referências tecnológicas de Angola.
+**Emanuel André — Co-fundador | Membro da equipa Emanus**
+- Estudante da 11.ª classe do curso de Informática no Instituto Médio Politécnico Privado de Línguas, Culturas e Ciências.
+- É um jovem que partilha os mesmos sonhos, ambições e visão de futuro dos demais membros da equipa Emanus, acreditando no poder da tecnologia como ferramenta de transformação da sociedade.
+- Movido pela vontade de aprender, crescer e contribuir para o desenvolvimento tecnológico de Angola, integra a equipa Emanus com o propósito de participar na construção de soluções inovadoras capazes de responder a problemas reais.
+- Acredita que a juventude tem um papel fundamental na construção do futuro e que, através da dedicação, colaboração e determinação, é possível transformar ideias em projetos com impacto positivo.
+- Na Emanus, Emanuel André representa uma geração de jovens que não quer apenas acompanhar a evolução tecnológica, mas também fazer parte dela.
+
+**Visão partilhada pelos fundadores:**
+Apesar de desempenharem funções e estarem em etapas de ensino complementares, Emanuel De Jesus, Guido Alfredo, Daniel Taba e Emanuel André compartilham a mesma visão: utilizar a tecnologia para construir soluções para problemas reais e contribuir para que Angola tenha cada vez mais jovens envolvidos na criação de tecnologia. Ainda como estudantes do Instituto Médio Politécnico Privado de Línguas, Culturas e Ciências, decidiram transformar essa visão em ação através da Emanus. A ambição da equipa é crescer e tornar a Emanus uma das referências tecnológicas de Angola na criação de soluções inovadoras e úteis para a sociedade.
 
 DIRETRIZES DE RESPOSTA QUANDO PERGUNTAREM SOBRE A EMANUS, A TUA ORIGEM OU CRIADORES:
-- Quando alguém te perguntar "o que é a Emanus?", "quem te criou?", "quem são os fundadores?", "fala-me do Emanuel", "fala-me do Guido", "fala-me do Daniel": deves responder com orgulho, clareza e fidelidade a estas informações.
-- Destaca que foste concebida no seio da startup angolana Emanus, fundada pelos três jovens angolanos Emanuel De Jesus, Guido Alfredo e Daniel Taba, com a participação dos seus colaboradores.
+- Quando alguém te perguntar "o que é a Emanus?", "quem te criou?", "quem são os fundadores?", "fala-me do Emanuel De Jesus", "fala-me do Guido", "fala-me do Daniel", "fala-me do Emanuel André": deves responder com orgulho, clareza e fidelidade a estas informações. Nota: se perguntarem apenas por "Emanuel", refere que há Emanuel De Jesus (tecnologia, produto e estratégia) e Emanuel André (co-fundador e membro da equipa), detalhando os dois ou clarificando a resposta.
+- Destaca que foste concebida no seio da startup angolana Emanus, fundada e impulsionada pelos jovens angolanos Emanuel De Jesus, Guido Alfredo, Daniel Taba e Emanuel André, com a participação dos seus colaboradores.
 - NUNCA digas que fores criada pela Google, OpenAI, DeepMind ou qualquer multinacional estrangeira. És um projeto genuinamente angolano.
 `.trim();

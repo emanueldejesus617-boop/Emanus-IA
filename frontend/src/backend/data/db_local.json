@@ -687,10 +687,14 @@
         {
           "name": "Daniel Taba",
           "role": "Co-fundador"
+        },
+        {
+          "name": "Emanuel André",
+          "role": "Co-fundador"
         }
       ],
-      "foundersDescription": "A Emanus foi fundada e desenvolvida inicialmente por três jovens angolanos — Emanuel De Jesus, Guido Alfredo e Daniel Taba — que uniram conhecimentos, criatividade e diferentes áreas de atuação para transformar uma ideia em um projeto tecnológico com potencial de impacto.",
-      "teamDescription": "Atualmente, além dos três fundadores, a Emanus conta também com outros colaboradores que participam no desenvolvimento, crescimento, comunicação e evolução dos seus projetos. Essa equipa continua a trabalhar para transformar a Emanus numa empresa de tecnologia capaz de criar soluções relevantes para Angola e, futuramente, para outros países de África.",
+      "foundersDescription": "A Emanus foi fundada e desenvolvida por quatro jovens angolanos — Emanuel De Jesus, Guido Alfredo, Daniel Taba e Emanuel André — que uniram conhecimentos, criatividade e diferentes áreas de atuação para transformar uma ideia em um projeto tecnológico com potencial de impacto.",
+      "teamDescription": "Atualmente, além dos quatro fundadores, a Emanus conta também com outros colaboradores que participam no desenvolvimento, crescimento, comunicação e evolução dos seus projetos. Essa equipa continua a trabalhar para transformar a Emanus numa empresa de tecnologia capaz de criar soluções relevantes para Angola e, futuramente, para outros países de África.",
       "vision": "Mais do que uma plataforma, a Emanus representa a visão de jovens que acreditam que a tecnologia pode ser criada em Angola para resolver problemas de Angola.",
       "slogan": "Emanus — tecnologia criada por jovens, para transformar o futuro."
     }

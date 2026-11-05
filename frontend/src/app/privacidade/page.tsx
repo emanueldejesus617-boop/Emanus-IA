@@ -102,7 +102,7 @@ export default function PrivacyPolicyPage() {
               <span className="text-primary font-mono text-base">01.</span> Identificação e Âmbito
             </h2>
             <p>
-              A plataforma <strong>Emanus IA</strong> é o primeiro produto da <strong>Emanus</strong>, uma startup angolana de tecnologia focada no desenvolvimento de soluções digitais que respondem a desafios reais da sociedade. A Emanus foi fundada e desenvolvida inicialmente por três jovens angolanos — <strong>Emanuel De Jesus, Guido Alfredo e Daniel Taba</strong> —, contando atualmente com uma equipa alargada de colaboradores para transformar o futuro da educação e da tecnologia em Angola.
+              A plataforma <strong>Emanus IA</strong> é o primeiro produto da <strong>Emanus</strong>, uma startup angolana de tecnologia focada no desenvolvimento de soluções digitais que respondem a desafios reais da sociedade. A Emanus foi fundada e desenvolvida por jovens angolanos — <strong>Emanuel De Jesus, Guido Alfredo, Daniel Taba e Emanuel André</strong> —, contando atualmente com uma equipa alargada de colaboradores para transformar o futuro da educação e da tecnologia em Angola.
             </p>
             <p>
               Esta Política de Privacidade estabelece os termos em que os dados pessoais dos utilizadores (estudantes, professores e encarregados de educação) são tratados no estrito cumprimento da legislação de proteção de dados (incluindo a Lei de Proteção de Dados Pessoais de Angola e normas internacionais de referência como o RGPD).

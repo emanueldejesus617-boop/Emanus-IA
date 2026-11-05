@@ -808,19 +808,17 @@ export default function DashboardLayout({
                 
                 <div className="grid grid-cols-2 gap-y-3 text-xs">
                   <div>
-                    <span className="text-[10px] text-muted block uppercase">Fundador e Desenvolvedor</span>
-                    <strong className="text-text font-semibold">Emanuel De Jesus</strong>
-                  </div>
-                  <div>
-                    <span className="text-[10px] text-muted block uppercase">Co-fundadores</span>
-                    <div className="flex flex-col gap-0.5">
-                      <strong className="text-text font-semibold">Alfredo Rodriguez</strong>
+                    <span className="text-[10px] text-muted block uppercase">Founder</span>
+                    <div className="flex flex-col gap-0.5 mt-0.5">
+                      <strong className="text-text font-semibold">Emanuel De Jesus</strong>
+                      <strong className="text-text font-semibold">Guido Alfredo</strong>
                       <strong className="text-text font-semibold">Daniel Taba</strong>
+                      <strong className="text-text font-semibold">Emanuel André</strong>
                     </div>
                   </div>
-                  <div className="col-span-2 pt-1">
+                  <div>
                     <span className="text-[10px] text-muted block uppercase">Equipa de Programadores</span>
-                    <div className="flex flex-col gap-0.5">
+                    <div className="flex flex-col gap-0.5 mt-0.5">
                       <strong className="text-text font-semibold">Emanuel De Jesus</strong>
                       <strong className="text-text font-semibold">Dewers Matari</strong>
                     </div>
