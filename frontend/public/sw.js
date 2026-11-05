@@ -75,10 +75,12 @@ self.addEventListener('fetch', (event) => {
   );
 });
 
-// Evento de clique na notificação de estudo
+// Evento de clique na notificação
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
-  const targetUrl = (event.notification.data && event.notification.data.url) || '/dashboard/schedule';
+  // Garantir que o URL é sempre interno (nunca externo, que causaria página não encontrada)
+  const rawUrl = (event.notification.data && event.notification.data.url) || '/dashboard/schedule';
+  const targetUrl = rawUrl.startsWith('http') ? '/dashboard' : rawUrl;
 
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {

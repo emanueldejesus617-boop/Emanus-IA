@@ -28,7 +28,7 @@ import {
   Download
 } from "lucide-react";
 import { Logo } from "@/components/logo";
-import { PWAInstallButton } from "@/components/pwa-install-button";
+import { InstallAppButton } from "@/components/install-app-button";
 import { auth } from "@/lib/firebase";
 import { signOut } from "firebase/auth";
 import { parseJsonResponse } from "@/lib/utils";
@@ -719,12 +719,7 @@ export default function DashboardLayout({
                 </button>
 
                 {/* Botão Descarregar App */}
-                <div onClick={() => setProfileMenuOpen(false)}>
-                  <PWAInstallButton
-                    variant="sidebar"
-                    className="w-full flex items-center gap-3 rounded-lg px-3 py-2 text-xs font-semibold hover:bg-dark text-text transition-all cursor-pointer"
-                  />
-                </div>
+                <InstallAppButton onClose={() => setProfileMenuOpen(false)} />
 
                 <div className="h-px bg-muted/10" />
 
