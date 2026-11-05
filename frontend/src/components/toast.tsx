@@ -172,3 +172,4 @@ function getToastConfig(type: ToastType) {
       };
   }
 }
+

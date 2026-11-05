@@ -399,9 +399,8 @@ export default function AdminPage() {
           <div className="flex gap-2 border-b border-muted/10">
             <button
               onClick={() => setActiveTab("users")}
-              className={`px-4 py-2.5 text-sm font-semibold border-b-2 transition-all cursor-pointer ${
-                activeTab === "users" ? "border-primary text-primary" : "border-transparent text-muted hover:text-text"
-              }`}
+              className={`px-4 py-2.5 text-sm font-semibold border-b-2 transition-all cursor-pointer ${activeTab === "users" ? "border-primary text-primary" : "border-transparent text-muted hover:text-text"
+                }`}
             >
               <span className="flex items-center gap-2">
                 <Users className="w-4 h-4" />
@@ -410,9 +409,8 @@ export default function AdminPage() {
             </button>
             <button
               onClick={() => setActiveTab("errors")}
-              className={`px-4 py-2.5 text-sm font-semibold border-b-2 transition-all cursor-pointer ${
-                activeTab === "errors" ? "border-danger text-danger" : "border-transparent text-muted hover:text-text"
-              }`}
+              className={`px-4 py-2.5 text-sm font-semibold border-b-2 transition-all cursor-pointer ${activeTab === "errors" ? "border-danger text-danger" : "border-transparent text-muted hover:text-text"
+                }`}
             >
               <span className="flex items-center gap-2">
                 <Bug className="w-4 h-4" />
@@ -724,11 +722,10 @@ export default function AdminPage() {
                       <div className="flex-1 min-w-0">
                         <div className="flex flex-wrap items-center gap-2 mb-1.5">
                           <span
-                            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${
-                              report.reportedByUser
+                            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${report.reportedByUser
                                 ? "bg-secondary/15 text-secondary border border-secondary/20"
                                 : "bg-danger/15 text-danger border border-danger/20"
-                            }`}
+                              }`}
                           >
                             {report.reportedByUser ? "Reportado por Utilizador" : "Erro Automático"}
                           </span>

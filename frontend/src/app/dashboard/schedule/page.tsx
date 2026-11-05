@@ -16,13 +16,13 @@ import {
 
 
 const DAY_COLORS: Record<DayKey, string> = {
-  monday:    "bg-primary/10 text-primary",
-  tuesday:   "bg-secondary/10 text-secondary",
+  monday: "bg-primary/10 text-primary",
+  tuesday: "bg-secondary/10 text-secondary",
   wednesday: "bg-accent/10 text-accent",
-  thursday:  "bg-primary/10 text-primary",
-  friday:    "bg-secondary/10 text-secondary",
-  saturday:  "bg-danger/10 text-danger",
-  sunday:    "bg-[#8350e8]/10 text-[#8350e8]",
+  thursday: "bg-primary/10 text-primary",
+  friday: "bg-secondary/10 text-secondary",
+  saturday: "bg-danger/10 text-danger",
+  sunday: "bg-[#8350e8]/10 text-[#8350e8]",
 };
 
 
@@ -293,10 +293,10 @@ export default function SchedulePage() {
         <header className="mb-10 text-center">
           <div className="inline-flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/15 border border-primary/20 shadow-[0_0_20px_rgba(0,255,136,0.1)] mb-5">
             <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-primary">
-              <rect width="18" height="18" x="3" y="4" rx="2" ry="2"/>
-              <line x1="16" x2="16" y1="2" y2="6"/>
-              <line x1="8" x2="8" y1="2" y2="6"/>
-              <line x1="3" x2="21" y1="10" y2="10"/>
+              <rect width="18" height="18" x="3" y="4" rx="2" ry="2" />
+              <line x1="16" x2="16" y1="2" y2="6" />
+              <line x1="8" x2="8" y1="2" y2="6" />
+              <line x1="3" x2="21" y1="10" y2="10" />
             </svg>
           </div>
           <h1 className="text-3xl font-bold text-text">Horário Inteligente</h1>
@@ -343,7 +343,7 @@ export default function SchedulePage() {
                     ${isSelected ? "border-primary bg-primary" : "border-muted/40"}`}>
                     {isSelected && (
                       <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
-                        <path d="M2 5l2.5 2.5L8 3" stroke="#0a0a0a" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                        <path d="M2 5l2.5 2.5L8 3" stroke="#0a0a0a" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                       </svg>
                     )}
                   </div>
@@ -367,15 +367,15 @@ export default function SchedulePage() {
             {isGenerating ? (
               <>
                 <svg className="animate-spin h-5 w-5 text-dark" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                 </svg>
                 A analisar e gerar horário...
               </>
             ) : (
               <>
                 <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                  <path d="M13 10V3L4 14h7v7l9-11h-7z" />
                 </svg>
                 Gerar Horário com IA
               </>
@@ -394,13 +394,13 @@ export default function SchedulePage() {
 
   // ── TABLE VIEW ───────────────────────────────────────────────────────────
   const days: { key: DayKey; label: string }[] = [
-    { key: "monday",    label: "Segunda" },
-    { key: "tuesday",   label: "Terça"   },
-    { key: "wednesday", label: "Quarta"  },
-    { key: "thursday",  label: "Quinta"  },
-    { key: "friday",    label: "Sexta"   },
-    { key: "saturday",  label: "Sábado"  },
-    { key: "sunday",    label: "Domingo" },
+    { key: "monday", label: "Segunda" },
+    { key: "tuesday", label: "Terça" },
+    { key: "wednesday", label: "Quarta" },
+    { key: "thursday", label: "Quinta" },
+    { key: "friday", label: "Sexta" },
+    { key: "saturday", label: "Sábado" },
+    { key: "sunday", label: "Domingo" },
   ];
 
   const displayData = editMode ? editData : (scheduleData ?? []);
@@ -418,7 +418,7 @@ export default function SchedulePage() {
         <div className="flex flex-wrap gap-2 items-center w-full sm:w-auto">
           {saveSuccess && (
             <span className="flex items-center gap-1.5 text-xs text-green-400 font-medium px-3 py-2 rounded-lg border border-green-500/30 bg-green-500/10">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
               Guardado com sucesso!
             </span>
           )}
@@ -428,11 +428,10 @@ export default function SchedulePage() {
               <button
                 id="toggle-schedule-notif-btn"
                 onClick={handleToggleNotifications}
-                className={`rounded-lg border px-3.5 py-2 text-xs sm:text-sm font-medium transition-colors cursor-pointer flex items-center gap-1.5 active:scale-95 ${
-                  notifPermission === "granted"
+                className={`rounded-lg border px-3.5 py-2 text-xs sm:text-sm font-medium transition-colors cursor-pointer flex items-center gap-1.5 active:scale-95 ${notifPermission === "granted"
                     ? "border-emerald-500/40 text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20"
                     : "border-primary/50 text-primary hover:bg-primary/10"
-                }`}
+                  }`}
                 title={notifPermission === "granted" ? "Lembretes ativos no teu aparelho! Clica para testar." : "Ativar notificações no teu aparelho na hora de estudar"}
               >
                 <Bell className="w-3.5 h-3.5" />
@@ -444,8 +443,8 @@ export default function SchedulePage() {
                 className="rounded-lg border border-accent/50 text-accent px-3.5 py-2 text-xs sm:text-sm font-medium hover:bg-accent/10 transition-colors cursor-pointer flex items-center gap-1.5 active:scale-95"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
                 </svg>
                 Editar
               </button>
@@ -475,17 +474,17 @@ export default function SchedulePage() {
                 {isSaving ? (
                   <>
                     <svg className="animate-spin h-3.5 w-3.5" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                     </svg>
                     A Guardar...
                   </>
                 ) : (
                   <>
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
-                      <polyline points="17 21 17 13 7 13 7 21"/>
-                      <polyline points="7 3 7 8 15 8"/>
+                      <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
+                      <polyline points="17 21 17 13 7 13 7 21" />
+                      <polyline points="7 3 7 8 15 8" />
                     </svg>
                     Guardar
                   </>
@@ -505,7 +504,7 @@ export default function SchedulePage() {
       {editMode && (
         <div className="mb-4 flex items-center gap-2 rounded-xl border border-accent/30 bg-accent/5 px-3.5 py-2.5 text-xs text-accent max-w-fit">
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
-            <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+            <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
           </svg>
           <span>Modo de edição activo — clica em qualquer célula ou hora para editar.</span>
         </div>
@@ -555,8 +554,8 @@ export default function SchedulePage() {
                           >
                             <span>{editData[rowIdx]?.time ?? row.time}</span>
                             <svg className="opacity-0 group-hover:opacity-100 shrink-0 transition-opacity" xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-                              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
                             </svg>
                           </button>
                         )
@@ -588,8 +587,8 @@ export default function SchedulePage() {
                               >
                                 <span className="flex-1">{editData[rowIdx]?.[d.key] ?? ""}</span>
                                 <svg className="opacity-0 group-hover:opacity-100 shrink-0 transition-opacity" xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-                                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
                                 </svg>
                               </button>
                             )
@@ -611,7 +610,7 @@ export default function SchedulePage() {
             <span>Plano de estudos no tempo livre — actualizado e activo</span>
             <span className="flex items-center text-primary font-medium">
               <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
               </svg>
               Optimizado para o Currículo de Angola
             </span>

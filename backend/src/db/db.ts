@@ -35,15 +35,32 @@ if (!fs.existsSync(DATA_DIR)) {
 }
 
 function loadLocalData(): Record<string, Record<string, any>> {
-  try {
-    if (fs.existsSync(LOCAL_DB_PATH)) {
-      const raw = fs.readFileSync(LOCAL_DB_PATH, 'utf-8');
-      return JSON.parse(raw);
-    }
-  } catch (e) {
-    console.warn("Aviso ao ler db_local.json, criando novo:", e);
+  const candidatePaths = [
+    LOCAL_DB_PATH,
+    path.resolve(__dirname, '../../../frontend/src/backend/data/db_local.json'),
+    path.resolve(__dirname, '../../../frontend/data/db_local.json'),
+    path.resolve(__dirname, '../../frontend/src/backend/data/db_local.json'),
+    path.resolve(__dirname, '../../frontend/data/db_local.json'),
+  ];
+
+  let result: Record<string, Record<string, any>> = {};
+
+  for (const p of candidatePaths) {
+    try {
+      if (fs.existsSync(p)) {
+        const raw = fs.readFileSync(p, 'utf-8');
+        const parsed = JSON.parse(raw);
+        for (const [col, colData] of Object.entries(parsed)) {
+          if (!result[col]) result[col] = { ...(colData as any) };
+          else if (typeof result[col] === 'object' && typeof colData === 'object') {
+            result[col] = { ...result[col], ...(colData as any) };
+          }
+        }
+      }
+    } catch {}
   }
-  return {};
+
+  return result;
 }
 
 function saveLocalData(data: Record<string, Record<string, any>>) {
@@ -461,6 +478,16 @@ export const adminAuth = {
       }
     }
     return false;
+  },
+  async listUsers(maxResults = 1000): Promise<any> {
+    if (rawAdminAuth && typeof rawAdminAuth.listUsers === 'function') {
+      try {
+        return await rawAdminAuth.listUsers(maxResults);
+      } catch (e) {
+        return { users: [] };
+      }
+    }
+    return { users: [] };
   }
 };
 

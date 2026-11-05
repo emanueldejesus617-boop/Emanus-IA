@@ -1,7 +1,136 @@
 import { FastifyInstance } from "fastify";
 import { z } from "zod";
-import { firestore, adminAuth } from "../db/db";
+import fs from "fs";
+import path from "path";
+import { firestore, adminAuth, localStore } from "../db/db";
 import { authenticateUser } from "./auth";
+
+/**
+ * Coletor abrangente e resiliente de utilizadores registrados.
+ * Combina Firestore remoto, Firebase Authentication e base de dados local persistente
+ * para garantir que absolutamente nenhuma conta em uso seja omitida do painel.
+ */
+async function fetchAllDatabaseUsers(): Promise<any[]> {
+  const usersMap = new Map<string, any>();
+
+  // 1. Obter do Firestore / Hybrid store
+  try {
+    const snapshot = await firestore.collection("users").get();
+    if (snapshot && snapshot.docs) {
+      snapshot.docs.forEach((doc: any) => {
+        const u = doc.data() as any;
+        const id = doc.id || u.id;
+        const email = (u.email || "").trim();
+        const emailKey = (email || id).toLowerCase();
+        const isAdmin = email.toLowerCase() === "emanueldejesus617@gmail.com" || u.role === "admin";
+
+        usersMap.set(emailKey, {
+          id,
+          name: u.name || u.displayName || "Sem nome",
+          email: u.email || "",
+          role: isAdmin ? "admin" : (u.role || "student"),
+          classe: u.classe || null,
+          curso: u.curso || null,
+          xp: u.xp || 0,
+          streak: u.streak || 0,
+          createdAt: u.createdAt || new Date().toISOString(),
+          lastLoginAt: u.lastLoginAt || null
+        });
+      });
+    }
+  } catch (err: any) {
+    console.warn("Aviso ao ler coleção users:", err.message);
+  }
+
+  // 2. Obter do Firebase Authentication (contas registadas por Google ou email/senha)
+  try {
+    if (adminAuth && typeof adminAuth.listUsers === "function") {
+      const fbUsers = await adminAuth.listUsers(1000).catch(() => null);
+      if (fbUsers && fbUsers.users) {
+        fbUsers.users.forEach((u: any) => {
+          const email = (u.email || "").trim();
+          if (!email) return;
+          const emailKey = email.toLowerCase();
+          const existing = usersMap.get(emailKey);
+          const isAdmin = emailKey === "emanueldejesus617@gmail.com" || u.customClaims?.role === "admin";
+
+          if (!existing) {
+            usersMap.set(emailKey, {
+              id: u.uid,
+              name: u.displayName || email.split("@")[0] || "Sem nome",
+              email: u.email,
+              role: isAdmin ? "admin" : "student",
+              classe: null,
+              curso: null,
+              xp: isAdmin ? 100 : 0,
+              streak: 0,
+              createdAt: u.metadata?.creationTime || new Date().toISOString(),
+              lastLoginAt: u.metadata?.lastSignInTime || null
+            });
+          } else if (isAdmin) {
+            existing.role = "admin";
+          }
+        });
+      }
+    }
+  } catch (fbAuthErr: any) {
+    // Silencioso em caso de token expirado ou sem internet
+  }
+
+  // 3. Fallback e sincronização a partir de ficheiros locais db_local.json
+  const candidateFiles = [
+    path.resolve(process.cwd(), "frontend/src/backend/data/db_local.json"),
+    path.resolve(process.cwd(), "frontend/data/db_local.json"),
+    path.resolve(process.cwd(), "data/db_local.json"),
+    path.resolve(__dirname, "../data/db_local.json")
+  ];
+
+  for (const fp of candidateFiles) {
+    try {
+      if (fs.existsSync(fp)) {
+        const raw = fs.readFileSync(fp, "utf-8");
+        const json = JSON.parse(raw);
+        if (json.users && typeof json.users === "object") {
+          Object.entries(json.users).forEach(([id, u]: [string, any]) => {
+            const email = (u.email || "").trim();
+            const emailKey = (email || id).toLowerCase();
+            const existing = usersMap.get(emailKey);
+            const isAdmin = email.toLowerCase() === "emanueldejesus617@gmail.com" || u.role === "admin";
+
+            if (!existing) {
+              usersMap.set(emailKey, {
+                id,
+                name: u.name || u.displayName || "Sem nome",
+                email: u.email || "",
+                role: isAdmin ? "admin" : (u.role || "student"),
+                classe: u.classe || null,
+                curso: u.curso || null,
+                xp: u.xp || 0,
+                streak: u.streak || 0,
+                createdAt: u.createdAt || new Date().toISOString(),
+                lastLoginAt: u.lastLoginAt || null
+              });
+            } else {
+              if (!existing.classe && u.classe) existing.classe = u.classe;
+              if (!existing.curso && u.curso) existing.curso = u.curso;
+              if (isAdmin) existing.role = "admin";
+            }
+          });
+        }
+      }
+    } catch {}
+  }
+
+  const list = Array.from(usersMap.values());
+  // Ordenar: primeiro administradores, depois alunos por XP decrescente
+  list.sort((a, b) => {
+    if (a.role === "admin" && b.role !== "admin") return -1;
+    if (b.role === "admin" && a.role !== "admin") return 1;
+    return (b.xp || 0) - (a.xp || 0);
+  });
+
+  return list;
+}
 
 export async function adminRoutes(fastify: FastifyInstance) {
   async function authorizeAdmin(request: any, reply: any) {
@@ -15,17 +144,18 @@ export async function adminRoutes(fastify: FastifyInstance) {
     return decoded;
   }
 
-  // GET /stats - System aggregation statistics
+  // GET /stats - Estatísticas consolidadas de todas as contas
   fastify.get("/stats", async (request, reply) => {
     const admin = await authorizeAdmin(request, reply);
     if (!admin) return;
 
     try {
-      const usersSnapshot = await firestore.collection("users").get();
-      const allUsers = usersSnapshot.docs.map((doc: any) => doc.data() as any);
-      
-      const students = allUsers.filter((u: any) => u.role !== "admin" && u.email !== "emanueldejesus617@gmail.com");
+      const allUsers = await fetchAllDatabaseUsers();
+
+      const totalUsers = allUsers.length;
+      const students = allUsers.filter((u: any) => u.role !== "admin");
       const totalStudents = students.length;
+      const totalAdmins = allUsers.filter((u: any) => u.role === "admin").length;
 
       const totalXp = students.reduce((acc: number, curr: any) => acc + (curr.xp || 0), 0);
       const averageXp = students.length > 0 ? Math.round(totalXp / students.length) : 0;
@@ -41,7 +171,9 @@ export async function adminRoutes(fastify: FastifyInstance) {
       const unresolvedErrors = errorsSnapshot.size;
 
       return {
+        totalUsers,
         totalStudents,
+        totalAdmins,
         averageXp,
         totalExams,
         totalCompletedTopics,
@@ -53,35 +185,14 @@ export async function adminRoutes(fastify: FastifyInstance) {
     }
   });
 
-  // GET /users - List of students (inclui todas as contas recém-criadas sem perda)
+  // GET /users - Todas as contas registadas na base de dados (sem omissões)
   fastify.get("/users", async (request, reply) => {
     const admin = await authorizeAdmin(request, reply);
     if (!admin) return;
 
     try {
-      const snapshot = await firestore.collection("users").get();
-
-      const students = snapshot.docs
-        .map((doc: any) => {
-          const u = doc.data() as any;
-          return {
-            id: doc.id,
-            name: u.name || "Sem nome",
-            email: u.email || "",
-            role: u.role || "student",
-            classe: u.classe || null,
-            curso: u.curso || null,
-            xp: u.xp || 0,
-            streak: u.streak || 0,
-            createdAt: u.createdAt || new Date().toISOString(),
-            lastLoginAt: u.lastLoginAt || null
-          };
-        })
-        .filter((u: any) => u.role !== "admin" && u.email !== "emanueldejesus617@gmail.com");
-
-      students.sort((a: any, b: any) => (b.xp || 0) - (a.xp || 0));
-
-      return students;
+      const allUsers = await fetchAllDatabaseUsers();
+      return allUsers;
     } catch (e: any) {
       fastify.log.error(e);
       return reply.status(500).send({ error: "Erro ao obter lista de utilizadores" });
@@ -96,7 +207,7 @@ export async function adminRoutes(fastify: FastifyInstance) {
     try {
       const { id } = z.object({ id: z.string() }).parse(request.params);
 
-      // Proteção: não permitir que o admin delete a própria conta
+      // Proteção: não permitir que o admin delete a própria conta de administrador
       const userDoc = await firestore.collection("users").doc(id).get();
       if (userDoc.exists) {
         const userData = userDoc.data();

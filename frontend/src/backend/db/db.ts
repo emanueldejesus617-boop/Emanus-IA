@@ -47,16 +47,39 @@ try {
   // Ignora se não puder criar diretório
 }
 
+function deepMergeStores(target: Record<string, any>, source: Record<string, any>) {
+  if (!source || typeof source !== 'object') return target;
+  for (const [colName, colData] of Object.entries(source)) {
+    if (!target[colName]) {
+      target[colName] = { ...colData };
+    } else if (typeof target[colName] === 'object' && typeof colData === 'object') {
+      target[colName] = { ...target[colName], ...colData };
+    } else {
+      target[colName] = colData;
+    }
+  }
+  return target;
+}
+
 function loadLocalData(): Record<string, Record<string, any>> {
   let data: Record<string, Record<string, any>> = {};
   if (initialLocalDb && typeof initialLocalDb === 'object') {
     data = JSON.parse(JSON.stringify(initialLocalDb));
   }
   try {
+    // Carregar e fundir do ficheiro LOCAL_DB_PATH
     if (fs.existsSync(LOCAL_DB_PATH)) {
       const raw = fs.readFileSync(LOCAL_DB_PATH, 'utf-8');
       const diskData = JSON.parse(raw);
-      data = { ...data, ...diskData };
+      deepMergeStores(data, diskData);
+    }
+
+    // Carregar também de frontend/data/db_local.json se existir e for diferente
+    const altPath = path.resolve(process.cwd(), 'frontend/data/db_local.json');
+    if (fs.existsSync(altPath) && altPath !== LOCAL_DB_PATH) {
+      const altRaw = fs.readFileSync(altPath, 'utf-8');
+      const altData = JSON.parse(altRaw);
+      deepMergeStores(data, altData);
     }
   } catch (e) {
     // Silencioso em fallback
@@ -67,12 +90,16 @@ function loadLocalData(): Record<string, Record<string, any>> {
 function saveLocalData(data: Record<string, Record<string, any>>) {
   try {
     fs.writeFileSync(LOCAL_DB_PATH, JSON.stringify(data, null, 2), 'utf-8');
+    const altPath = path.resolve(process.cwd(), 'frontend/data/db_local.json');
+    if (altPath !== LOCAL_DB_PATH && fs.existsSync(path.dirname(altPath))) {
+      fs.writeFileSync(altPath, JSON.stringify(data, null, 2), 'utf-8');
+    }
   } catch (e) {
     // Silencioso em Vercel se /tmp tiver restrição
   }
 }
 
-const localStore = loadLocalData();
+export const localStore = loadLocalData();
 
 // ================================================================
 // FIREBASE ADMIN CREDENTIALS
@@ -253,7 +280,7 @@ class HybridCollection {
           id: docId,
           data: () => undefined,
           ref: {
-            delete: async () => {}
+            delete: async () => { }
           }
         };
       },
@@ -401,7 +428,7 @@ class HybridCollection {
 
               // Tentar sincronizar em background para o Firestore remoto
               if (rawFirestore) {
-                rawFirestore.collection(self.colName).doc(id).set(item).catch(() => {});
+                rawFirestore.collection(self.colName).doc(id).set(item).catch(() => { });
               }
             }
           }
@@ -463,7 +490,7 @@ class HybridCollection {
 
         // Tentar sincronizar em background para o Firestore remoto
         if (rawFirestore) {
-          rawFirestore.collection(this.colName).doc(id).set(data).catch(() => {});
+          rawFirestore.collection(this.colName).doc(id).set(data).catch(() => { });
         }
       }
     }
@@ -565,6 +592,16 @@ export const adminAuth = {
       }
     }
     return false;
+  },
+  async listUsers(maxResults = 1000): Promise<any> {
+    if (rawAdminAuth && typeof rawAdminAuth.listUsers === 'function') {
+      try {
+        return await rawAdminAuth.listUsers(maxResults);
+      } catch (e) {
+        return { users: [] };
+      }
+    }
+    return { users: [] };
   }
 };
 
@@ -574,7 +611,7 @@ export async function seedAdminUser() {
 
   try {
     const userSnapshot = await firestore.collection('users').where('email', '==', adminEmail).limit(1).get();
-    
+
     if (userSnapshot.empty) {
       const passwordHash = await bcrypt.hash(adminPassword, 10);
       const adminId = "admin-default-id";

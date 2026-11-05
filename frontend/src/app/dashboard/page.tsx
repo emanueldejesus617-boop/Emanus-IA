@@ -1,8 +1,20 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { Rocket, Flame, Sparkles } from "lucide-react";
+import {
+  Rocket,
+  Flame,
+  Sparkles,
+  BookOpen,
+  FileText,
+  Clock,
+  ArrowRight,
+  GraduationCap,
+  Calendar,
+  CheckCircle2,
+  TrendingUp
+} from "lucide-react";
 import { parseJsonResponse } from "@/lib/utils";
 
 interface User {
@@ -35,6 +47,8 @@ interface ExamHistory {
 }
 
 export default function DashboardPage() {
+  const router = useRouter();
+
   const [user, setUser] = useState<User | null>(() => {
     if (typeof window !== "undefined") {
       const stored = localStorage.getItem("user");
@@ -42,6 +56,7 @@ export default function DashboardPage() {
     }
     return null;
   });
+
   const [profile, setProfile] = useState<Profile | null>(() => {
     if (typeof window !== "undefined") {
       const stored = localStorage.getItem("userProfile");
@@ -49,9 +64,9 @@ export default function DashboardPage() {
     }
     return null;
   });
+
   const [history, setHistory] = useState<ExamHistory[]>([]);
   const [completedTopicsCount, setCompletedTopicsCount] = useState(0);
-  const router = useRouter();
 
   const getDaysUntilExams = () => {
     const now = new Date();
@@ -61,8 +76,7 @@ export default function DashboardPage() {
       examDate = new Date(currentYear + 1, 10, 20);
     }
     const diffTime = examDate.getTime() - now.getTime();
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    return diffDays;
+    return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
   };
 
   const loadUserData = useCallback(async () => {
@@ -74,9 +88,7 @@ export default function DashboardPage() {
 
     try {
       const res = await fetch("/api/auth/me", {
-        headers: {
-          "Authorization": `Bearer ${token}`
-        }
+        headers: { Authorization: `Bearer ${token}` }
       });
 
       if (!res.ok) {
@@ -107,7 +119,7 @@ export default function DashboardPage() {
       console.error("Error loading user from DB:", err);
       const storedUser = localStorage.getItem("user");
       if (storedUser) setUser(JSON.parse(storedUser));
-      
+
       const storedProfile = localStorage.getItem("userProfile");
       if (storedProfile) setProfile(JSON.parse(storedProfile));
     }
@@ -116,15 +128,15 @@ export default function DashboardPage() {
   const loadDashboardData = useCallback(async () => {
     const token = localStorage.getItem("token");
     if (!token) return;
-    
+
     // Load exam history
     try {
       const res = await fetch("/api/exams/history", {
-        headers: { "Authorization": `Bearer ${token}` }
+        headers: { Authorization: `Bearer ${token}` }
       });
       if (res.ok) {
         const data = await parseJsonResponse(res);
-        setHistory(data);
+        setHistory(Array.isArray(data) ? data : []);
       }
     } catch (e) {
       console.error("Error loading dashboard exam history:", e);
@@ -133,11 +145,11 @@ export default function DashboardPage() {
     // Load completed topics progress
     try {
       const res = await fetch("/api/lessons/progress", {
-        headers: { "Authorization": `Bearer ${token}` }
+        headers: { Authorization: `Bearer ${token}` }
       });
       if (res.ok) {
         const data = await parseJsonResponse(res);
-        setCompletedTopicsCount(data.length || 0);
+        setCompletedTopicsCount(Array.isArray(data) ? data.length : 0);
       }
     } catch (e) {
       console.error("Error loading completed topics:", e);
@@ -145,8 +157,7 @@ export default function DashboardPage() {
   }, []);
 
   useEffect(() => {
-    loadUserData();
-    loadDashboardData();
+    Promise.allSettled([loadUserData(), loadDashboardData()]);
 
     const handleProfileUpdated = () => {
       const stored = localStorage.getItem("user");
@@ -162,122 +173,250 @@ export default function DashboardPage() {
     };
   }, [loadUserData, loadDashboardData]);
 
+  const subjects = useMemo(() => {
+    return profile?.subjects && profile.subjects.length > 0
+      ? profile.subjects
+      : ["Matemática", "Física", "História de Angola"];
+  }, [profile]);
+
+  const xp = user?.xp || 0;
+  const lessonsCompleted = completedTopicsCount;
+  const lessonsPercent = Math.min(100, Math.round((lessonsCompleted / 30) * 100));
+  const exercisesSolved = history.reduce((acc, curr) => acc + (curr.totalQuestions || 5), 0);
+  const streak = user?.streak || 0;
+
+  const getSubjectProgress = useCallback(
+    (sub: string) => {
+      const subExams = history.filter((h) => h.subject.toLowerCase() === sub.toLowerCase());
+      if (subExams.length === 0) return 0;
+      const totalScore = subExams.reduce((acc, h) => acc + h.score, 0);
+      const totalQuestions = subExams.reduce((acc, h) => acc + h.totalQuestions, 0);
+      return totalQuestions > 0 ? Math.round((totalScore / totalQuestions) * 100) : 0;
+    },
+    [history]
+  );
+
   if (!user) return null;
 
-  const subjects = profile?.subjects || ['Matemática', 'Física', 'História de Angola'];
-
-  const xp = user.xp || 0;
-  // Use completed topics count or fallback to xp-derived value
-  const lessonsCompleted = completedTopicsCount;
-  const lessonsPercent = Math.min(100, Math.round((lessonsCompleted / 30) * 100)); // Say 30 topics is 100%
-  
-  // Total exercises solved is sum of questions across all historical exams
-  const exercisesSolved = history.reduce((acc, curr) => acc + (curr.totalQuestions || 5), 0);
-  const streak = user.streak || 0;
-
-  // Calculate real performance per subject
-  const getSubjectProgress = (sub: string) => {
-    const subExams = history.filter(h => h.subject.toLowerCase() === sub.toLowerCase());
-    if (subExams.length === 0) return 0;
-    const totalScore = subExams.reduce((acc, h) => acc + h.score, 0);
-    const totalQuestions = subExams.reduce((acc, h) => acc + h.totalQuestions, 0);
-    return Math.round((totalScore / totalQuestions) * 100);
-  };
+  const daysUntilExams = getDaysUntilExams();
 
   return (
-    <div className="p-4 sm:p-8 pb-20">
-      <header className="mb-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-surface/40 sm:border-0 pb-4 sm:pb-0">
+    <div className="p-4 sm:p-8 pb-20 max-w-7xl mx-auto w-full animate-fade-in space-y-6 sm:space-y-8">
+      {/* Header Section */}
+      <header className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-6 border-b border-surface/40">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-text flex items-center gap-2">
-            Olá, {user.name}! <Sparkles className="w-5 h-5 sm:w-6 sm:h-6 text-primary inline-block shrink-0" />
-          </h1>
-          <p className="mt-1 sm:mt-2 text-xs sm:text-sm text-muted">Aqui está o teu progresso na {profile?.classe || '12.ª Classe'} {profile?.curso ? `(${profile.curso})` : ''}.</p>
+          <div className="flex items-center gap-2">
+            <h1 className="text-2xl sm:text-3xl font-bold text-text tracking-tight">
+              Olá, {user.name}!
+            </h1>
+            <Sparkles className="w-5 h-5 text-primary shrink-0" />
+          </div>
+          <div className="flex flex-wrap items-center gap-2 mt-1.5 text-xs sm:text-sm text-muted">
+            <span className="inline-flex items-center gap-1.5 font-medium text-text">
+              <GraduationCap className="w-4 h-4 text-primary" />
+              {profile?.classe || "12.ª Classe"}
+            </span>
+            {profile?.curso && (
+              <>
+                <span className="text-muted/40">•</span>
+                <span>{profile.curso}</span>
+              </>
+            )}
+          </div>
         </div>
-        <div className="text-left sm:text-right bg-surface/30 sm:bg-transparent p-3 sm:p-0 rounded-xl w-full sm:w-auto">
-          <p className="text-xs sm:text-sm font-medium text-muted">Faltam para os Exames:</p>
-          <p className="text-xl sm:text-2xl font-bold text-primary">{getDaysUntilExams()} Dias</p>
+
+        {/* Exames Countdown Pill */}
+        <div className="flex items-center gap-3 bg-surface border border-muted/15 px-4 py-2.5 rounded-2xl shadow-sm self-stretch sm:self-auto justify-between sm:justify-start">
+          <div className="w-9 h-9 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary shrink-0">
+            <Clock className="w-4 h-4" />
+          </div>
+          <div>
+            <span className="text-[11px] font-medium text-muted block leading-none">Exames Finais</span>
+            <span className="text-base sm:text-lg font-bold text-primary leading-tight mt-0.5 block">
+              {daysUntilExams} {daysUntilExams === 1 ? "Dia" : "Dias"}
+            </span>
+          </div>
         </div>
       </header>
 
+      {/* Boas-vindas para novos alunos */}
       {xp === 0 && history.length === 0 && (
-        <div className="mb-8 flex flex-col sm:flex-row items-start sm:items-center gap-4 rounded-xl border border-primary/20 bg-primary/5 p-4 sm:p-6 shadow-sm animate-fade-in">
-          <div className="flex h-10 w-10 sm:h-12 sm:w-12 flex-shrink-0 items-center justify-center rounded-full bg-primary text-dark">
-            <Rocket className="w-5 h-5 sm:w-6 sm:h-6" />
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 rounded-2xl border border-primary/25 bg-primary/5 p-5 sm:p-6 shadow-sm">
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary text-dark font-bold">
+            <Rocket className="w-5 h-5" />
           </div>
-          <div>
-            <h2 className="text-base sm:text-lg font-bold text-primary">Bem-vindo ao teu novo painel de controlo!</h2>
-            <p className="mt-1 text-xs sm:text-sm text-muted">Como és um novo utilizador, todas as tuas métricas começam a zero. Começa a tua primeira aula ou resolve exercícios para veres os teus gráficos e estatísticas a crescer dinamicamente com base nas tuas ações.</p>
+          <div className="flex-1">
+            <h2 className="text-sm sm:text-base font-bold text-primary">Bem-vindo ao teu painel de estudo!</h2>
+            <p className="mt-1 text-xs sm:text-sm text-muted leading-relaxed">
+              O teu percurso começa agora. Inicia a tua primeira aula interativa com o Tutor IA ou testa os teus
+              conhecimentos nos simulados para acompanhar o teu progresso em tempo real.
+            </p>
           </div>
+          <button
+            onClick={() => router.push("/dashboard/intelijai")}
+            className="w-full sm:w-auto px-4 py-2.5 bg-primary text-dark font-semibold text-xs rounded-xl hover:opacity-90 active:scale-98 transition-all cursor-pointer shrink-0"
+          >
+            Começar Agora
+          </button>
         </div>
       )}
 
-      <div className="grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2 md:grid-cols-3">
-        <div className="rounded-xl border border-surface bg-surface p-4 sm:p-6 shadow-sm">
-          <h3 className="text-xs sm:text-sm font-medium text-muted">Aulas Concluídas</h3>
-          <p className="mt-2 text-2xl sm:text-3xl font-bold text-primary">{lessonsCompleted} <span className="text-xs font-normal text-muted">tópicos</span></p>
-          <div className="mt-4 h-2 w-full overflow-hidden rounded-full bg-dark">
-            <div className="h-full bg-primary transition-all duration-500" style={{ width: `${lessonsPercent}%` }} />
+      {/* Grid de Métricas Principais (3 Colunas) */}
+      <section className="grid gap-4 sm:gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+        {/* Card 1: Aulas Concluídas */}
+        <div className="rounded-2xl border border-surface bg-surface p-5 sm:p-6 shadow-sm space-y-3">
+          <div className="flex items-center justify-between">
+            <span className="text-xs sm:text-sm font-medium text-muted">Aulas Concluídas</span>
+            <div className="w-8 h-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
+              <BookOpen className="w-4 h-4" />
+            </div>
+          </div>
+          <div>
+            <div className="flex items-baseline gap-2">
+              <span className="text-2xl sm:text-3xl font-black text-text">{lessonsCompleted}</span>
+              <span className="text-xs text-muted font-normal">tópicos concluídos</span>
+            </div>
+            <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-dark">
+              <div
+                className="h-full bg-primary transition-all duration-500 rounded-full"
+                style={{ width: `${Math.max(lessonsPercent, lessonsCompleted > 0 ? 5 : 0)}%` }}
+              />
+            </div>
+            <div className="flex justify-between items-center mt-2 text-[11px] text-muted">
+              <span>Meta do trimestre</span>
+              <span className="font-semibold text-text">{lessonsPercent}%</span>
+            </div>
           </div>
         </div>
-        <div className="rounded-xl border border-surface bg-surface p-4 sm:p-6 shadow-sm">
-          <h3 className="text-xs sm:text-sm font-medium text-muted">Exercícios Resolvidos</h3>
-          <p className="mt-2 text-2xl sm:text-3xl font-bold text-secondary">{exercisesSolved}</p>
-          <p className="mt-2 text-xs text-muted">Total acumulado: {xp} XP</p>
-        </div>
-        <div className="rounded-xl border border-surface bg-surface p-4 sm:p-6 shadow-sm col-span-1 sm:col-span-2 md:col-span-1">
-          <h3 className="text-xs sm:text-sm font-medium text-muted">Dias Seguidos (Streak)</h3>
-          <p className="mt-2 text-2xl sm:text-3xl font-bold text-accent flex items-center gap-1.5">
-            {streak} <Flame className="w-6 h-6 sm:w-7 sm:h-7 text-accent" />
-          </p>
-          <p className="mt-2 text-xs text-muted">Continua a aprender todos os dias!</p>
-        </div>
-      </div>
 
-      <div className="mt-8 sm:mt-12 grid gap-6 sm:gap-8 grid-cols-1 md:grid-cols-2">
-        <div>
-          <h2 className="mb-4 sm:mb-6 text-base sm:text-xl font-bold text-text">A tua próxima aula</h2>
-          <div className="flex flex-col justify-between rounded-xl border border-surface bg-surface p-4 sm:p-6 h-auto sm:h-[200px]">
-            <div>
-              <span className="inline-block rounded bg-secondary/10 px-2 py-1 text-xs font-semibold text-secondary">
-                {subjects[0]} • {profile?.classe || '12.ª Classe'}
-              </span>
-              <h3 className="mt-2 sm:mt-3 text-base sm:text-lg font-bold text-text">Introdução à Matéria</h3>
-              <p className="mt-1 sm:mt-2 text-xs sm:text-sm text-muted">Começa a aprender os conceitos básicos desta disciplina.</p>
+        {/* Card 2: Exercícios Resolvidos */}
+        <div className="rounded-2xl border border-surface bg-surface p-5 sm:p-6 shadow-sm space-y-3">
+          <div className="flex items-center justify-between">
+            <span className="text-xs sm:text-sm font-medium text-muted">Exercícios Resolvidos</span>
+            <div className="w-8 h-8 rounded-lg bg-secondary/10 text-secondary flex items-center justify-center">
+              <FileText className="w-4 h-4" />
             </div>
-            <button 
-              onClick={() => router.push("/dashboard/intelijai")}
-              className="mt-4 w-full rounded-lg bg-primary px-6 py-2.5 font-medium text-dark transition-opacity hover:opacity-90 cursor-pointer text-sm active:scale-[0.98]"
+          </div>
+          <div>
+            <div className="flex items-baseline gap-2">
+              <span className="text-2xl sm:text-3xl font-black text-text">{exercisesSolved}</span>
+              <span className="text-xs text-muted font-normal">questões respondidas</span>
+            </div>
+            <div className="mt-3 flex items-center gap-2 text-xs font-semibold text-accent">
+              <TrendingUp className="w-3.5 h-3.5" />
+              <span>{xp} XP acumulados</span>
+            </div>
+            <p className="mt-1 text-[11px] text-muted">Pontos ganhos em simulados e aulas</p>
+          </div>
+        </div>
+
+        {/* Card 3: Sequência (Streak) */}
+        <div className="rounded-2xl border border-surface bg-surface p-5 sm:p-6 shadow-sm space-y-3 col-span-1 sm:col-span-2 lg:col-span-1">
+          <div className="flex items-center justify-between">
+            <span className="text-xs sm:text-sm font-medium text-muted">Dias Seguidos (Streak)</span>
+            <div className="w-8 h-8 rounded-lg bg-accent/10 text-accent flex items-center justify-center">
+              <Flame className="w-4 h-4" />
+            </div>
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="text-2xl sm:text-3xl font-black text-text">{streak}</span>
+              <Flame className="w-6 h-6 text-accent shrink-0" />
+            </div>
+            <p className="mt-3 text-xs font-medium text-text">
+              {streak > 0 ? "Ritmo ativo! Continua firme." : "Inicia hoje a tua sequência de estudo!"}
+            </p>
+            <p className="mt-1 text-[11px] text-muted">Estuda diariamente para manter o streak aceso</p>
+          </div>
+        </div>
+      </section>
+
+      {/* Sessão de Ação & Desempenho (2 Colunas) */}
+      <section className="grid gap-6 sm:gap-8 grid-cols-1 lg:grid-cols-2">
+        {/* Card Esquerdo: Próxima Aula / Estudar com a IA */}
+        <div className="space-y-4">
+          <h2 className="text-base sm:text-lg font-bold text-text flex items-center gap-2">
+            <BookOpen className="w-4 h-4 text-primary" /> A tua próxima sessão de estudo
+          </h2>
+
+          <div className="rounded-2xl border border-surface bg-surface p-5 sm:p-6 shadow-sm flex flex-col justify-between space-y-5">
+            <div className="space-y-2.5">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-secondary/10 text-secondary border border-secondary/20">
+                  {subjects[0]}
+                </span>
+                <span className="text-xs text-muted font-medium">• {profile?.classe || "12.ª Classe"}</span>
+              </div>
+
+              <h3 className="text-base sm:text-lg font-bold text-text leading-snug">
+                Introdução e Tópicos Fundamentais
+              </h3>
+              <p className="text-xs sm:text-sm text-muted leading-relaxed">
+                Tira dúvidas em tempo real, compreende fórmulas e analisa conceitos de forma adaptada ao currículo de Angola.
+              </p>
+            </div>
+
+            <div className="pt-2 flex flex-col sm:flex-row gap-3">
+              <button
+                onClick={() => router.push("/dashboard/intelijai")}
+                className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-5 py-3 text-xs sm:text-sm font-semibold text-dark hover:opacity-90 active:scale-98 transition-all cursor-pointer shadow-sm shadow-primary/20"
+              >
+                <span>Iniciar Aula com Tutor IA</span>
+                <ArrowRight className="w-4 h-4" />
+              </button>
+
+              <button
+                onClick={() => router.push("/dashboard/schedule")}
+                className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-muted/20 px-4 py-3 text-xs font-semibold text-text hover:bg-dark hover:border-muted/30 active:scale-98 transition-all cursor-pointer"
+              >
+                <Calendar className="w-3.5 h-3.5 text-muted" />
+                <span>Horário</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Card Direito: Aproveitamento nos Simulados */}
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-base sm:text-lg font-bold text-text flex items-center gap-2">
+              <TrendingUp className="w-4 h-4 text-secondary" /> Aproveitamento nos Simulados
+            </h2>
+            <button
+              onClick={() => router.push("/dashboard/exams")}
+              className="text-xs font-semibold text-primary hover:underline cursor-pointer"
             >
-              Iniciar Aula com a Emanus IA
+              Fazer Simulado
             </button>
           </div>
-        </div>
 
-        <div>
-          <h2 className="mb-4 sm:mb-6 text-base sm:text-xl font-bold text-text">Aproveitamento nos Simulados</h2>
-          <div className="rounded-xl border border-surface bg-surface p-4 sm:p-6 space-y-3 sm:space-y-4 h-auto sm:h-[200px] overflow-y-auto">
+          <div className="rounded-2xl border border-surface bg-surface p-5 sm:p-6 shadow-sm space-y-4">
             {subjects.map((sub: string, i: number) => {
-              const colors = ['bg-primary', 'bg-secondary', 'bg-accent', 'bg-orange-500', 'bg-purple-500', 'bg-green-500', 'bg-primary'];
-              const textColors = ['text-primary', 'text-secondary', 'text-accent', 'text-orange-500', 'text-purple-500', 'text-green-500', 'text-primary'];
+              const colors = ["bg-primary", "bg-secondary", "bg-accent", "bg-emerald-500", "bg-purple-500", "bg-sky-500"];
+              const textColors = ["text-primary", "text-secondary", "text-accent", "text-emerald-500", "text-purple-500", "text-sky-500"];
               const colorIdx = i % colors.length;
-              
               const subProgress = getSubjectProgress(sub);
 
               return (
-                <div key={i}>
-                  <div className="flex justify-between text-xs sm:text-sm mb-1">
-                    <span className="font-medium truncate mr-2">{sub}</span>
-                    <span className={`shrink-0 ${textColors[colorIdx]}`}>{subProgress === 0 ? "Sem dados" : `${subProgress}%`}</span>
+                <div key={i} className="space-y-1.5">
+                  <div className="flex justify-between items-center text-xs sm:text-sm">
+                    <span className="font-semibold text-text truncate pr-2">{sub}</span>
+                    <span className={`shrink-0 font-bold ${textColors[colorIdx]}`}>
+                      {subProgress === 0 ? "Sem dados" : `${subProgress}%`}
+                    </span>
                   </div>
-                  <div className="h-1.5 sm:h-2 w-full bg-dark rounded-full overflow-hidden">
-                    <div className={`h-full ${colors[colorIdx]} transition-all duration-500`} style={{ width: `${subProgress}%` }} />
+                  <div className="h-2 w-full bg-dark rounded-full overflow-hidden">
+                    <div
+                      className={`h-full ${colors[colorIdx]} transition-all duration-500 rounded-full`}
+                      style={{ width: `${Math.max(subProgress, subProgress > 0 ? 4 : 0)}%` }}
+                    />
                   </div>
                 </div>
               );
             })}
           </div>
         </div>
-      </div>
+      </section>
     </div>
   );
 }
