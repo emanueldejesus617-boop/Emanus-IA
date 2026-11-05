@@ -24,7 +24,8 @@ import {
   Send,
   CheckCircle2,
   Lock,
-  BookOpen
+  BookOpen,
+  Download
 } from "lucide-react";
 import { Logo } from "@/components/logo";
 import { auth } from "@/lib/firebase";
@@ -715,6 +716,18 @@ export default function DashboardLayout({
                   </svg>
                   <span>Acerca da Emanus IA</span>
                 </button>
+
+                {/* Botão Descarregar App */}
+                <a
+                  href="https://emanueldejesus617-boop.github.io/emanus-app-download/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={() => setProfileMenuOpen(false)}
+                  className="w-full flex items-center gap-3 rounded-lg px-3 py-2 text-xs font-semibold hover:bg-dark text-text transition-all cursor-pointer"
+                >
+                  <Download className="w-4 h-4 text-primary flex-shrink-0" />
+                  <span>Descarregar App</span>
+                </a>
 
                 <div className="h-px bg-muted/10" />
 
