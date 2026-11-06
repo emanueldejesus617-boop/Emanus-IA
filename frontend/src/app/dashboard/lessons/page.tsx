@@ -416,7 +416,7 @@ export default function LessonsPage() {
         {lessonData && (
           <div className="space-y-8 animate-slide-up">
             {/* Aula Teórica */}
-            <article className="prose prose-invert max-w-none text-text text-sm leading-relaxed space-y-4 rounded-2xl border border-surface bg-surface/50 p-6">
+            <article className="prose dark:prose-invert max-w-none text-text text-sm leading-relaxed space-y-4 rounded-2xl border border-surface bg-surface/50 p-6">
               <div className="flex items-center justify-between mb-4">
                 <span className="inline-block bg-primary/10 border border-primary/20 text-primary text-[10px] px-2 py-0.5 rounded font-bold uppercase">Aula Teórica</span>
                 <button

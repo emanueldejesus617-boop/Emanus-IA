@@ -153,7 +153,7 @@ export default function DashboardPage() {
       if (stored) {
         try {
           setUser(JSON.parse(stored));
-        } catch {}
+        } catch { }
       }
     };
     window.addEventListener("userProfileUpdated", handleProfileUpdated);
@@ -190,7 +190,7 @@ export default function DashboardPage() {
       </header>
 
       {/* 2. Hero Banner: O teu futuro começa aqui! */}
-      <section className="relative overflow-hidden rounded-3xl border border-primary/20 bg-gradient-to-br from-surface via-surface to-[#0A1A2F] p-6 sm:p-10 shadow-xl">
+      <section className="relative overflow-hidden rounded-3xl border border-primary/20 bg-gradient-to-br from-surface via-surface to-primary/10 dark:to-[#0A1A2F] p-6 sm:p-10 shadow-lg dark:shadow-xl">
         {/* Glow de fundo sutil com as cores da marca */}
         <div className="absolute top-0 right-0 -mt-10 -mr-10 w-72 h-72 rounded-full bg-primary/10 blur-3xl pointer-events-none" />
         <div className="absolute bottom-0 right-1/4 -mb-10 w-64 h-64 rounded-full bg-secondary/10 blur-3xl pointer-events-none" />
@@ -208,9 +208,9 @@ export default function DashboardPage() {
             <div className="pt-2">
               <button
                 onClick={() => router.push("/dashboard/lessons")}
-                className="inline-flex items-center gap-2.5 px-6 py-3.5 rounded-2xl bg-primary text-dark font-bold text-xs sm:text-sm hover:opacity-95 active:scale-98 transition-all cursor-pointer shadow-lg shadow-primary/20"
+                className="inline-flex items-center gap-2.5 px-6 py-3.5 rounded-2xl bg-primary text-white dark:text-[#0A0F1E] font-bold text-xs sm:text-sm hover:opacity-95 active:scale-98 transition-all cursor-pointer shadow-lg shadow-primary/20"
               >
-                <Play className="w-4 h-4 fill-dark" />
+                <Play className="w-4 h-4 fill-current" />
                 <span>Explorar as Aulas</span>
               </button>
             </div>
@@ -272,8 +272,8 @@ export default function DashboardPage() {
           className="group rounded-2xl border border-muted/15 bg-surface p-4 sm:p-5 shadow-sm hover:border-primary/40 hover:shadow-md transition-all cursor-pointer flex items-center justify-between"
         >
           <div className="flex items-center gap-3.5">
-            <div className="w-12 h-12 rounded-2xl bg-blue-500/10 border border-blue-500/20 text-blue-400 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-              <BookOpen className="w-5 h-5 text-blue-400" />
+            <div className="w-12 h-12 rounded-2xl bg-blue-500/10 border border-blue-500/20 text-blue-600 dark:text-blue-400 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+              <BookOpen className="w-5 h-5 text-blue-600 dark:text-blue-400" />
             </div>
             <div>
               <h3 className="text-sm font-bold text-text group-hover:text-primary transition-colors">Aulas</h3>
@@ -289,11 +289,11 @@ export default function DashboardPage() {
           className="group rounded-2xl border border-muted/15 bg-surface p-4 sm:p-5 shadow-sm hover:border-purple-500/40 hover:shadow-md transition-all cursor-pointer flex items-center justify-between"
         >
           <div className="flex items-center gap-3.5">
-            <div className="w-12 h-12 rounded-2xl bg-purple-500/10 border border-purple-500/20 text-purple-400 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-              <ClipboardCheck className="w-5 h-5 text-purple-400" />
+            <div className="w-12 h-12 rounded-2xl bg-purple-500/10 border border-purple-500/20 text-purple-600 dark:text-purple-400 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+              <ClipboardCheck className="w-5 h-5 text-purple-600 dark:text-purple-400" />
             </div>
             <div>
-              <h3 className="text-sm font-bold text-text group-hover:text-purple-400 transition-colors">Simulados</h3>
+              <h3 className="text-sm font-bold text-text group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors">Simulados</h3>
               <p className="text-[11px] text-muted mt-0.5">Teste os seus conhecimentos</p>
             </div>
           </div>
@@ -306,11 +306,11 @@ export default function DashboardPage() {
           className="group rounded-2xl border border-muted/15 bg-surface p-4 sm:p-5 shadow-sm hover:border-emerald-500/40 hover:shadow-md transition-all cursor-pointer flex items-center justify-between"
         >
           <div className="flex items-center gap-3.5">
-            <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-              <Calendar className="w-5 h-5 text-emerald-400" />
+            <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+              <Calendar className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
             </div>
             <div>
-              <h3 className="text-sm font-bold text-text group-hover:text-emerald-400 transition-colors">Gerar Horário</h3>
+              <h3 className="text-sm font-bold text-text group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">Gerar Horário</h3>
               <p className="text-[11px] text-muted mt-0.5">Organize o seu estudo</p>
             </div>
           </div>
@@ -357,13 +357,13 @@ export default function DashboardPage() {
           {/* Conteúdo Principal do Card */}
           <div className="flex flex-col sm:flex-row items-center gap-5">
             {/* Thumbnail com Badge e Ícone */}
-            <div className="relative w-full sm:w-48 h-32 rounded-2xl bg-gradient-to-br from-dark to-[#0E1726] border border-muted/20 flex flex-col items-center justify-center p-3 shrink-0 shadow-inner overflow-hidden">
+            <div className="relative w-full sm:w-48 h-32 rounded-2xl bg-slate-100 dark:bg-gradient-to-br dark:from-dark dark:to-[#0E1726] border border-slate-200/80 dark:border-muted/20 flex flex-col items-center justify-center p-3 shrink-0 shadow-inner overflow-hidden">
               <div className="absolute top-2.5 left-2.5">
-                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-primary text-dark">
+                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-primary text-white dark:text-[#0A0F1E]">
                   {currentSubject}
                 </span>
               </div>
-              <div className="w-12 h-12 rounded-xl bg-surface/80 border border-muted/20 flex items-center justify-center text-primary shadow-sm mt-3">
+              <div className="w-12 h-12 rounded-xl bg-white dark:bg-surface/80 border border-slate-200 dark:border-muted/20 flex items-center justify-center text-primary shadow-sm mt-3">
                 <Code2 className="w-6 h-6 text-primary" />
               </div>
               <span className="text-[10px] text-muted font-mono mt-2">{profile?.classe || "12.ª Classe"}</span>
@@ -380,9 +380,9 @@ export default function DashboardPage() {
               <div className="pt-2">
                 <button
                   onClick={() => router.push("/dashboard/intelijai")}
-                  className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-primary text-dark font-bold text-xs hover:opacity-95 active:scale-98 transition-all cursor-pointer shadow-md shadow-primary/10"
+                  className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-primary text-white dark:text-[#0A0F1E] font-bold text-xs hover:opacity-95 active:scale-98 transition-all cursor-pointer shadow-md shadow-primary/10"
                 >
-                  <Play className="w-3.5 h-3.5 fill-dark" />
+                  <Play className="w-3.5 h-3.5 fill-current" />
                   <span>Continuar aula</span>
                 </button>
               </div>
@@ -391,12 +391,12 @@ export default function DashboardPage() {
         </div>
 
         {/* Card Direito: Os teus objetivos (5 Colunas) */}
-        <div className="lg:col-span-5 rounded-3xl border border-muted/15 bg-gradient-to-br from-surface to-[#0A1A24] p-5 sm:p-7 shadow-sm space-y-5 flex flex-col justify-between">
+        <div className="lg:col-span-5 rounded-3xl border border-muted/15 bg-gradient-to-br from-surface via-surface to-emerald-500/10 dark:to-[#0A1A24] p-5 sm:p-7 shadow-sm space-y-5 flex flex-col justify-between">
           {/* Cabeçalho */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 flex items-center justify-center">
-                <Target className="w-4 h-4 text-emerald-400" />
+              <div className="w-8 h-8 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 flex items-center justify-center">
+                <Target className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
               </div>
               <h3 className="text-base sm:text-lg font-bold text-text">Os teus objetivos</h3>
             </div>
@@ -416,9 +416,9 @@ export default function DashboardPage() {
                 <span className="text-muted font-medium">Progresso geral</span>
                 <span className="font-bold text-primary">{lessonsPercent}%</span>
               </div>
-              <div className="h-2.5 w-full bg-dark rounded-full overflow-hidden p-0.5 border border-muted/10">
+              <div className="h-2.5 w-full bg-slate-200/70 dark:bg-dark rounded-full overflow-hidden p-0.5 border border-slate-200 dark:border-muted/10">
                 <div
-                  className="h-full bg-gradient-to-r from-primary to-[#00E5A3] rounded-full transition-all duration-700"
+                  className="h-full bg-primary rounded-full transition-all duration-700"
                   style={{ width: `${lessonsPercent}%` }}
                 />
               </div>

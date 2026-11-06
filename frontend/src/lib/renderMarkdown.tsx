@@ -61,7 +61,7 @@ export const parseInlineStyles = (text: string): React.ReactNode => {
           tempParts.push(
             <code
               key={`c-${codeIndex++}`}
-              className="bg-dark px-1.5 py-0.5 rounded text-xs font-mono border border-muted/20 text-accent"
+              className="bg-dark/80 px-1.5 py-0.5 rounded text-xs font-mono border border-muted/20 text-emerald-800 dark:text-accent font-semibold"
             >
               {split[i]}
             </code>
@@ -157,7 +157,7 @@ export const renderMessageContent = (text: string): React.ReactNode[] => {
         elements.push(
           <pre
             key={`code-${codeBlockKey++}`}
-            className="bg-dark/60 border border-muted/20 rounded-xl p-4 my-3 overflow-x-auto text-xs font-mono text-accent leading-relaxed"
+            className="bg-dark/80 dark:bg-dark/60 border border-muted/20 rounded-xl p-4 my-3 overflow-x-auto text-xs font-mono text-slate-800 dark:text-accent leading-relaxed"
           >
             <code>{codeLines.join("\n")}</code>
           </pre>

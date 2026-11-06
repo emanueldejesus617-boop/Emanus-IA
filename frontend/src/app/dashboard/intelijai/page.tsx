@@ -41,15 +41,15 @@ export default function IntelijaiPage() {
   // Media upload/recording states and refs
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [imageMimeType, setImageMimeType] = useState<string | null>(null);
-  
+
   const [audioPreviewUrl, setAudioPreviewUrl] = useState<string | null>(null);
   const [audioBase64, setAudioBase64] = useState<string | null>(null);
   const [audioMimeType, setAudioMimeType] = useState<string | null>(null);
-  
+
   const [isRecording, setIsRecording] = useState(false);
   const [recordingTime, setRecordingTime] = useState(0);
   const [personality, setPersonality] = useState<"step-by-step" | "direct" | "mixed">("step-by-step");
-  
+
   const mediaRecorderRef = useRef<any>(null);
   const audioStreamRef = useRef<any>(null);
   const recordingTimerRef = useRef<any>(null);
@@ -155,7 +155,7 @@ export default function IntelijaiPage() {
       if (res.ok) {
         const data = await res.json();
         setMessages(data);
-        
+
         // Find conversation subject to keep filter synced
         const conv = conversations.find(c => c.id === id);
         if (conv) {
@@ -233,13 +233,13 @@ export default function IntelijaiPage() {
 
   const speakSegment = (text: string) => {
     if (!("speechSynthesis" in window)) return;
-    
+
     const cleanText = cleanTextForTTS(text);
 
     if (!cleanText || cleanText.length < 2) return;
 
     const utterance = new SpeechSynthesisUtterance(cleanText);
-    
+
     // Escolhe a voz configurada pelo utilizador ou a melhor voz em Português disponível no browser
     const voices = window.speechSynthesis.getVoices();
     const savedVoiceURI = typeof window !== "undefined" ? localStorage.getItem("emanus_voice_uri") : null;
@@ -249,9 +249,9 @@ export default function IntelijaiPage() {
     }
     utterance.lang = ptVoice?.lang || "pt-PT";
     if (ptVoice) utterance.voice = ptVoice;
-    
+
     utterance.rate = audioSpeed;
-    
+
     utterance.onstart = () => setIsSpeaking(true);
     utterance.onend = () => setIsSpeaking(false);
     utterance.onerror = () => setIsSpeaking(false);
@@ -266,18 +266,18 @@ export default function IntelijaiPage() {
     if (start >= text.length) return;
 
     const remaining = text.slice(start);
-    
+
     const boundaryRegex = /[.?!;\n]+/;
     const match = remaining.match(boundaryRegex);
 
     if (match && match.index !== undefined) {
       const boundaryIndex = match.index + match[0].length;
       const sentence = remaining.slice(0, boundaryIndex).trim();
-      
+
       if (sentence) {
         speakSegment(sentence);
       }
-      
+
       spokenOffsetRef.current = start + boundaryIndex;
       speakStream(text, isFinal);
     } else if (isFinal && remaining.trim()) {
@@ -345,7 +345,7 @@ export default function IntelijaiPage() {
     };
     reader.readAsDataURL(file);
   };
-  
+
   const removeImage = () => {
     setImagePreview(null);
     setImageMimeType(null);
@@ -472,15 +472,15 @@ export default function IntelijaiPage() {
       }
     }
   };
-  
+
   const stopAudioRecording = () => {
     if (!isRecording || !mediaRecorderRef.current) return;
-    
+
     mediaRecorderRef.current.stop();
     if (audioStreamRef.current) {
       audioStreamRef.current.getTracks().forEach((track: any) => track.stop());
     }
-    
+
     setIsRecording(false);
     if (recordingTimerRef.current) {
       clearInterval(recordingTimerRef.current);
@@ -489,24 +489,24 @@ export default function IntelijaiPage() {
 
   const cancelAudioRecording = () => {
     if (!isRecording || !mediaRecorderRef.current) return;
-    
-    mediaRecorderRef.current.onstop = () => {};
+
+    mediaRecorderRef.current.onstop = () => { };
     mediaRecorderRef.current.stop();
-    
+
     if (audioStreamRef.current) {
       audioStreamRef.current.getTracks().forEach((track: any) => track.stop());
     }
-    
+
     setIsRecording(false);
     if (recordingTimerRef.current) {
       clearInterval(recordingTimerRef.current);
     }
-    
+
     setAudioPreviewUrl(null);
     setAudioBase64(null);
     setAudioMimeType(null);
   };
-  
+
   const removeAudio = () => {
     setAudioPreviewUrl(null);
     setAudioBase64(null);
@@ -516,7 +516,7 @@ export default function IntelijaiPage() {
   const submitMessage = async (userMessage: string, currentHistory: Message[]) => {
     if (!userMessage.trim() && !imagePreview && !audioBase64) return;
     if (isLoading) return;
-    
+
     if ("speechSynthesis" in window) {
       window.speechSynthesis.cancel();
     }
@@ -561,11 +561,11 @@ export default function IntelijaiPage() {
     try {
       const res = await fetch("/api/ai/chat", {
         method: "POST",
-        headers: { 
+        headers: {
           "Content-Type": "application/json",
           ...(token ? { "Authorization": `Bearer ${token}` } : {})
         },
-        body: JSON.stringify({ 
+        body: JSON.stringify({
           message: userMessage,
           mediaData: payloadMediaData || undefined,
           mediaType: payloadMediaType || undefined,
@@ -590,7 +590,7 @@ export default function IntelijaiPage() {
 
       const reader = res.body?.getReader();
       if (!reader) throw new Error("Stream indisponível");
-      
+
       const decoder = new TextDecoder("utf-8");
 
       // Place placeholder for assistant's response
@@ -600,19 +600,19 @@ export default function IntelijaiPage() {
       let buffer = "";
       let accumulatedText = "";
       let hasReceivedConvId = false;
-      
+
       while (!done) {
         const { value, done: doneReading } = await reader.read();
         done = doneReading;
-        
+
         if (value) {
           buffer += decoder.decode(value, { stream: true });
-          
+
           let newlineIndex;
           while ((newlineIndex = buffer.indexOf("\n")) >= 0) {
             const line = buffer.slice(0, newlineIndex).trim();
             buffer = buffer.slice(newlineIndex + 1);
-            
+
             if (line.startsWith("data: ")) {
               const dataStr = line.replace("data: ", "").trim();
               if (dataStr === "[DONE]") {
@@ -628,8 +628,8 @@ export default function IntelijaiPage() {
 
               if (parsedData) {
                 if (parsedData.error) {
-                  accumulatedText = parsedData.limitReached || parsedData.error.includes("Limite") 
-                    ? parsedData.error 
+                  accumulatedText = parsedData.limitReached || parsedData.error.includes("Limite")
+                    ? parsedData.error
                     : ("Ocorreu um erro: " + parsedData.error);
                   setMessages(prev => {
                     const newMsgs = [...prev];
@@ -646,7 +646,7 @@ export default function IntelijaiPage() {
                   done = true;
                   break;
                 }
-                
+
                 // Catch conversationId and subject if returned by backend
                 if (parsedData.conversationId) {
                   if (!hasReceivedConvId) {
@@ -748,7 +748,7 @@ export default function IntelijaiPage() {
     <div className="flex h-full w-full bg-dark relative overflow-hidden">
       {/* Mobile history overlay */}
       {historySidebarOpen && (
-        <div 
+        <div
           onClick={() => setHistorySidebarOpen(false)}
           className="fixed inset-0 bg-black/60 z-30 lg:hidden backdrop-blur-sm"
         />
@@ -766,11 +766,10 @@ export default function IntelijaiPage() {
               <button
                 key={sub}
                 onClick={() => handleSubjectChange(sub)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer whitespace-nowrap ${
-                  activeSubject === sub
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer whitespace-nowrap ${activeSubject === sub
                     ? 'bg-primary text-dark font-bold shadow-sm'
                     : 'bg-dark/50 border border-muted/20 text-muted hover:text-text hover:border-primary/30'
-                }`}
+                  }`}
               >
                 {sub}
               </button>
@@ -779,11 +778,11 @@ export default function IntelijaiPage() {
         </div>
 
         <div className="p-4 border-b border-surface/50">
-          <button 
+          <button
             onClick={handleNewConversation}
             className="w-full py-2.5 px-4 rounded-xl border border-primary/30 text-primary hover:bg-primary/10 transition-all flex items-center justify-center gap-2 text-sm font-semibold cursor-pointer active:scale-98"
           >
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14" /><path d="M12 5v14" /></svg>
             Nova Conversa em {activeSubject}
           </button>
         </div>
@@ -797,24 +796,24 @@ export default function IntelijaiPage() {
             </div>
           ) : (
             filteredConversations.map(conv => (
-              <div 
+              <div
                 key={conv.id}
                 onClick={() => selectConversation(conv.id)}
                 className={`group relative flex items-center justify-between p-3 rounded-xl cursor-pointer transition-all border ${activeConversationId === conv.id ? 'bg-primary/10 text-primary border-primary/20' : 'bg-dark/40 border-transparent hover:bg-dark/80 hover:text-text'}`}
               >
                 <div className="flex items-center gap-3 overflow-hidden mr-6">
-                  <svg className={`shrink-0 ${activeConversationId === conv.id ? 'text-primary' : 'text-muted'}`} xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                  <svg className={`shrink-0 ${activeConversationId === conv.id ? 'text-primary' : 'text-muted'}`} xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>
                   <div className="flex flex-col text-left overflow-hidden">
                     <span className="text-sm font-medium truncate">{conv.title}</span>
                     <span className="text-[10px] text-muted/60 truncate">{new Date(conv.createdAt).toLocaleDateString('pt-PT', { day: '2-digit', month: 'short' })}</span>
                   </div>
                 </div>
-                <button 
+                <button
                   onClick={(e) => { e.stopPropagation(); deleteConversation(conv.id); }}
                   className="opacity-0 group-hover:opacity-100 hover:text-danger p-1 rounded transition-opacity cursor-pointer"
                   title="Eliminar Conversa"
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18" /><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" /><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" /></svg>
                 </button>
               </div>
             ))
@@ -826,13 +825,13 @@ export default function IntelijaiPage() {
       <div className="flex-1 flex flex-col h-full relative overflow-hidden bg-dark">
         {/* Cabeçalho da disciplina ativa no chat */}
         <div className="p-4 border-b border-surface bg-surface/20 flex items-center gap-3">
-          <button 
+          <button
             type="button"
             onClick={() => setHistorySidebarOpen(!historySidebarOpen)}
             className="lg:hidden p-2 rounded-lg bg-dark/40 border border-muted/15 text-muted hover:text-text cursor-pointer flex items-center gap-1.5"
             title="Ver Conversas"
           >
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18"/></svg>
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" /><path d="M9 3v18" /></svg>
             <span className="text-[10px] font-bold">Histórico</span>
           </button>
           <div className="h-2 w-2 rounded-full bg-primary animate-pulse"></div>
@@ -852,7 +851,7 @@ export default function IntelijaiPage() {
                 <span className="w-0.5 h-2.5 bg-primary rounded-full animate-bounce [animation-delay:0.3s]"></span>
               </div>
             )}
-            
+
             {/* Botão de Velocidade */}
             <button
               type="button"
@@ -872,13 +871,12 @@ export default function IntelijaiPage() {
             <button
               type="button"
               onClick={handleToggleAudio}
-              className={`p-1.5 rounded-lg border transition-all cursor-pointer active:scale-95 ${
-                isSpeaking 
-                  ? "bg-danger/10 border-danger/30 text-danger hover:bg-danger/20 shadow-[0_0_10px_rgba(239,68,68,0.15)]" 
+              className={`p-1.5 rounded-lg border transition-all cursor-pointer active:scale-95 ${isSpeaking
+                  ? "bg-danger/10 border-danger/30 text-danger hover:bg-danger/20 shadow-[0_0_10px_rgba(239,68,68,0.15)]"
                   : messages.some(m => m.role === "model")
                     ? "bg-primary/10 border-primary/30 text-primary hover:bg-primary/20 shadow-[0_0_10px_rgba(0,200,150,0.15)]"
                     : "bg-dark/50 border-muted/10 text-muted opacity-50 cursor-not-allowed"
-              }`}
+                }`}
               disabled={!isSpeaking && !messages.some(m => m.role === "model")}
               title={isSpeaking ? "Parar Explicação de Áudio" : "Recomeçar Explicação de Áudio"}
             >
@@ -904,23 +902,23 @@ export default function IntelijaiPage() {
                 <div className="inline-flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10 text-primary border border-primary/20 mb-4 shadow-[0_0_15px_rgba(0,200,150,0.15)]">
                   <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeLinecap="round" strokeLinejoin="round">
                     {/* Outer ring */}
-                    <circle cx="12" cy="12" r="10" strokeWidth="1" strokeOpacity={0.25}/>
+                    <circle cx="12" cy="12" r="10" strokeWidth="1" strokeOpacity={0.25} />
                     {/* Triangle connections between outer nodes */}
-                    <line x1="12" y1="3.5" x2="5.5" y2="17" strokeWidth="0.75" strokeOpacity={0.3}/>
-                    <line x1="12" y1="3.5" x2="18.5" y2="17" strokeWidth="0.75" strokeOpacity={0.3}/>
-                    <line x1="5.5" y1="17" x2="18.5" y2="17" strokeWidth="0.75" strokeOpacity={0.3}/>
+                    <line x1="12" y1="3.5" x2="5.5" y2="17" strokeWidth="0.75" strokeOpacity={0.3} />
+                    <line x1="12" y1="3.5" x2="18.5" y2="17" strokeWidth="0.75" strokeOpacity={0.3} />
+                    <line x1="5.5" y1="17" x2="18.5" y2="17" strokeWidth="0.75" strokeOpacity={0.3} />
                     {/* Hub lines from center */}
-                    <line x1="12" y1="9.5" x2="12" y2="5.3" strokeWidth="1" strokeOpacity={0.55}/>
-                    <line x1="9.8" y1="13.2" x2="7.2" y2="15.5" strokeWidth="1" strokeOpacity={0.55}/>
-                    <line x1="14.2" y1="13.2" x2="16.8" y2="15.5" strokeWidth="1" strokeOpacity={0.55}/>
+                    <line x1="12" y1="9.5" x2="12" y2="5.3" strokeWidth="1" strokeOpacity={0.55} />
+                    <line x1="9.8" y1="13.2" x2="7.2" y2="15.5" strokeWidth="1" strokeOpacity={0.55} />
+                    <line x1="14.2" y1="13.2" x2="16.8" y2="15.5" strokeWidth="1" strokeOpacity={0.55} />
                     {/* Outer nodes */}
-                    <circle cx="12" cy="3.5" r="1.7" strokeWidth="1.4" fill="currentColor" fillOpacity={0.15}/>
-                    <circle cx="5.5" cy="17" r="1.7" strokeWidth="1.4" fill="currentColor" fillOpacity={0.15}/>
-                    <circle cx="18.5" cy="17" r="1.7" strokeWidth="1.4" fill="currentColor" fillOpacity={0.15}/>
+                    <circle cx="12" cy="3.5" r="1.7" strokeWidth="1.4" fill="currentColor" fillOpacity={0.15} />
+                    <circle cx="5.5" cy="17" r="1.7" strokeWidth="1.4" fill="currentColor" fillOpacity={0.15} />
+                    <circle cx="18.5" cy="17" r="1.7" strokeWidth="1.4" fill="currentColor" fillOpacity={0.15} />
                     {/* Center node */}
-                    <circle cx="12" cy="12" r="2.6" strokeWidth="1.6" fill="currentColor" fillOpacity={0.25}/>
+                    <circle cx="12" cy="12" r="2.6" strokeWidth="1.6" fill="currentColor" fillOpacity={0.25} />
                     {/* Center dot */}
-                    <circle cx="12" cy="12" r="1" fill="currentColor" strokeWidth={0}/>
+                    <circle cx="12" cy="12" r="1" fill="currentColor" strokeWidth={0} />
                   </svg>
                 </div>
                 <h2 className="text-2xl font-bold text-text mb-1">Sou a Emanus IA</h2>
@@ -957,18 +955,18 @@ export default function IntelijaiPage() {
                         )}
                       </div>
                     )}
-                    <div className="prose prose-invert max-w-none text-text text-sm space-y-2">
+                    <div className="prose dark:prose-invert max-w-none text-text text-sm space-y-2">
                       {textPart?.text && renderMessageContent(textPart.text)}
-                      
+
                       {mediaPart?.inlineData && (
                         <div>
                           {mediaPart.inlineData.mimeType.startsWith("image/") && (
                             <div className="mt-2 rounded-xl overflow-hidden border border-muted/10 max-w-sm shadow-sm bg-dark/30 p-1">
                               {/* eslint-disable-next-line @next/next/no-img-element */}
-                              <img 
-                                src={`data:${mediaPart.inlineData.mimeType};base64,${mediaPart.inlineData.data}`} 
-                                alt="Imagem anexada" 
-                                className="w-full h-auto object-contain max-h-64 rounded-lg cursor-pointer hover:opacity-95" 
+                              <img
+                                src={`data:${mediaPart.inlineData.mimeType};base64,${mediaPart.inlineData.data}`}
+                                alt="Imagem anexada"
+                                className="w-full h-auto object-contain max-h-64 rounded-lg cursor-pointer hover:opacity-95"
                                 onClick={() => {
                                   // Open image in new tab for a larger view
                                   const mimeType = mediaPart.inlineData?.mimeType;
@@ -982,10 +980,10 @@ export default function IntelijaiPage() {
                           )}
                           {mediaPart.inlineData.mimeType.startsWith("audio/") && (
                             <div className="mt-2 p-2 rounded-xl bg-dark/20 border border-muted/10 flex items-center justify-center max-w-xs">
-                              <audio 
-                                src={`data:${mediaPart.inlineData.mimeType};base64,${mediaPart.inlineData.data}`} 
-                                controls 
-                                className="w-full h-8 accent-primary text-xs" 
+                              <audio
+                                src={`data:${mediaPart.inlineData.mimeType};base64,${mediaPart.inlineData.data}`}
+                                controls
+                                className="w-full h-8 accent-primary text-xs"
                               />
                             </div>
                           )}
@@ -1062,7 +1060,7 @@ export default function IntelijaiPage() {
                       className="p-1 text-muted hover:text-danger rounded transition-colors cursor-pointer self-end sm:self-center"
                       title="Remover anexo"
                     >
-                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18" /><path d="m6 6 12 12" /></svg>
                     </button>
                   </>
                 )}
@@ -1070,12 +1068,12 @@ export default function IntelijaiPage() {
             )}
 
             <form onSubmit={handleSubmit} className="relative flex items-center">
-              <input 
-                type="file" 
-                ref={fileInputRef} 
-                onChange={handleImageSelect} 
-                accept="image/*" 
-                className="hidden" 
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleImageSelect}
+                accept="image/*"
+                className="hidden"
               />
               <button
                 type="button"
@@ -1084,7 +1082,7 @@ export default function IntelijaiPage() {
                 title="Anexar imagem"
                 disabled={isLoading || isRecording || (audioPreviewUrl !== null)}
               >
-                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="sm:w-5 sm:h-5"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="sm:w-5 sm:h-5"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48" /></svg>
               </button>
               <input
                 type="text"
@@ -1102,9 +1100,9 @@ export default function IntelijaiPage() {
                 title={isRecording ? "Parar Gravação" : "Gravar Áudio"}
               >
                 {isRecording ? (
-                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="sm:w-5 sm:h-5"><rect x="4" y="4" width="16" height="16" rx="2" ry="2"/></svg>
+                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="sm:w-5 sm:h-5"><rect x="4" y="4" width="16" height="16" rx="2" ry="2" /></svg>
                 ) : (
-                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="sm:w-5 sm:h-5"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/></svg>
+                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="sm:w-5 sm:h-5"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z" /><path d="M19 10v2a7 7 0 0 1-14 0v-2" /><line x1="12" x2="12" y1="19" y2="22" /></svg>
                 )}
               </button>
               <button
@@ -1112,7 +1110,7 @@ export default function IntelijaiPage() {
                 disabled={(!input.trim() && !imagePreview && !audioBase64) || isLoading || isRecording}
                 className="absolute right-2 sm:right-2.5 p-2 bg-primary rounded-full text-dark hover:opacity-90 disabled:opacity-50 transition-opacity cursor-pointer"
               >
-                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="sm:w-5 sm:h-5"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="sm:w-5 sm:h-5"><path d="m22 2-7 20-4-9-9-4Z" /><path d="M22 2 11 13" /></svg>
               </button>
             </form>
             <p className="text-center text-[10px] text-muted mt-2.5 sm:mt-3 truncate">

@@ -633,7 +633,7 @@ export default function LoginPage() {
       )}
 
       {/* Lado Esquerdo - Painel Criativo / Exortação (visível apenas em telas grandes) */}
-      <div className="relative hidden lg:flex lg:col-span-7 flex-col justify-between p-16 bg-[#E5E7EB] dark:bg-dark border-r border-muted/5 overflow-hidden transition-colors duration-300">
+      <div className="relative hidden lg:flex lg:col-span-7 flex-col justify-between p-16 bg-gradient-to-br from-slate-50 via-emerald-50/20 to-blue-50/20 dark:from-dark dark:via-dark dark:to-dark dark:bg-dark border-r border-muted/10 overflow-hidden transition-colors duration-300">
         {/* Glow Blobs decorativos de fundo */}
         <div className="absolute top-[-20%] left-[-20%] w-[80%] h-[80%] rounded-full bg-secondary/15 blur-[120px] animate-glow pointer-events-none" />
         <div className="absolute bottom-[-10%] right-[-10%] w-[60%] h-[60%] rounded-full bg-primary/10 blur-[100px] animate-glow pointer-events-none" style={{ animationDelay: "2s" }} />
@@ -747,7 +747,7 @@ export default function LoginPage() {
         </div>
 
         {/* Card do Formulário */}
-        <div className="w-full max-w-md rounded-2xl border border-muted/10 bg-surface/30 backdrop-blur-xl p-5 sm:p-8 shadow-2xl relative z-10 transition-colors duration-300">
+        <div className="w-full max-w-md rounded-2xl border border-muted/15 bg-surface/90 dark:bg-surface/30 backdrop-blur-xl p-5 sm:p-8 shadow-xl relative z-10 transition-colors duration-300">
 
           {/* Ecrã de verificação de email */}
           {emailVerificationSent ? (

@@ -369,7 +369,7 @@ export default function AdminPage() {
 
             {/* Aulas */}
             <div className="rounded-2xl border border-surface bg-surface p-5 shadow-sm flex items-center gap-4">
-              <div className="h-12 w-12 rounded-xl bg-purple-500/10 border border-purple-500/20 text-purple-400 flex items-center justify-center text-xl font-bold shrink-0">
+              <div className="h-12 w-12 rounded-xl bg-purple-500/10 border border-purple-500/20 text-purple-600 dark:text-purple-400 flex items-center justify-center text-xl font-bold shrink-0">
                 <BookOpen className="w-6 h-6" />
               </div>
               <div className="min-w-0">

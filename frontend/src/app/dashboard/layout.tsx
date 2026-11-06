@@ -610,7 +610,7 @@ export default function DashboardLayout({
                 key={item.name}
                 href={item.href}
                 onClick={() => setMobileMenuOpen(false)}
-                className={"flex items-center rounded-lg px-4 py-3 text-sm font-medium transition-colors " + (isActive ? "bg-primary/10 text-primary" : "text-muted hover:bg-surface hover:text-text")}
+                className={"flex items-center rounded-lg px-4 py-3 text-sm font-medium transition-colors " + (isActive ? "bg-primary/10 text-primary font-semibold" : "text-muted hover:bg-dark/70 hover:text-text")}
               >
                 {item.name}
               </Link>
@@ -1093,6 +1093,27 @@ export default function DashboardLayout({
                   maxLength={50}
                   className="w-full bg-transparent text-text text-sm outline-none placeholder:text-muted/40 font-normal"
                 />
+              </div>
+
+              {/* Informações Escolares e Atalho para Alterar Disciplinas */}
+              <div className="rounded-xl border border-muted/20 bg-dark/40 p-3.5 space-y-2">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-muted font-medium">Classe &amp; Curso:</span>
+                  <span className="text-text font-bold truncate max-w-[170px] text-right">
+                    {user.classe || "Não definida"} {user.curso ? `• ${user.curso}` : ""}
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setProfileModalOpen(false);
+                    router.push("/onboarding");
+                  }}
+                  className="w-full text-center py-2 rounded-lg border border-primary/30 bg-primary/10 hover:bg-primary/20 text-primary text-xs font-semibold transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                >
+                  <BookOpen className="w-3.5 h-3.5" />
+                  <span>Alterar Curso &amp; Disciplinas</span>
+                </button>
               </div>
 
               {/* Botões Cancelar / Guardar */}
