@@ -25,7 +25,14 @@ import {
   CheckCircle2,
   Lock,
   BookOpen,
-  Download
+  Download,
+  Home,
+  Calendar,
+  ClipboardCheck,
+  Bell,
+  Sun,
+  Moon,
+  LogOut
 } from "lucide-react";
 import { Logo } from "@/components/logo";
 import { InstallAppButton } from "@/components/install-app-button";
@@ -66,6 +73,7 @@ export default function DashboardLayout({
   const { toast } = useToast();
   const [user, setUser] = useState<User | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [mobileProfileOpen, setMobileProfileOpen] = useState(false);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
   const [aboutOpen, setAboutOpen] = useState(false);
   const [personalizationOpen, setPersonalizationOpen] = useState(false);
@@ -303,6 +311,34 @@ export default function DashboardLayout({
   if (user.role === "admin") {
     navItems.push({ name: "Painel Admin", href: "/dashboard/admin" });
   }
+
+  // Itens da barra inferior fixa mobile (Bottom Navigation Footer)
+  const bottomNavItems = [
+    { label: "Dashboard", route: "/dashboard", icon: Home },
+    { label: "Emanus", route: "/dashboard/intelijai", icon: Sparkles },
+    { label: "Aulas", route: "/dashboard/lessons", icon: BookOpen },
+    { label: "Simulados", route: "/dashboard/exams", icon: ClipboardCheck },
+    { label: "Horário", route: "/dashboard/schedule", icon: Calendar },
+  ];
+
+  const handleNotificationBellClick = () => {
+    if (typeof window !== "undefined" && "Notification" in window) {
+      if (Notification.permission === "default") {
+        requestNotificationPermission().then((granted) => {
+          if (granted) {
+            toast.success("Notificações ativadas", "Serás avisado antes das tuas sessões de estudo!");
+            setShowNotifPermissionPrompt(false);
+          }
+        });
+        return;
+      }
+    }
+    if (studyAlert) {
+      toast.info(`Próxima Aula: ${studyAlert.subject}`, `Horário programado para ${studyAlert.time}`);
+    } else {
+      toast.info("Notificações de Estudo", "O teu horário escolar está ativo e sincronizado.");
+    }
+  };
 
   const handleLogout = async () => {
     localStorage.clear();
@@ -558,49 +594,164 @@ export default function DashboardLayout({
       </div>
     )}
     <div className="flex h-screen bg-dark flex-col md:flex-row overflow-hidden relative transition-colors duration-300">
-      {/* Mobile Header Bar */}
-      <header className="flex md:hidden items-center justify-between px-6 py-4 bg-surface border-b border-muted/10 h-16 w-full shrink-0 z-30 sticky top-0">
-        <Link href="/dashboard" className="cursor-pointer">
+      {/* Mobile Top Header Bar */}
+      <header className="flex md:hidden items-center justify-between px-4 py-3 bg-surface/95 backdrop-blur-md border-b border-muted/15 h-14 w-full shrink-0 z-30 sticky top-0 transition-colors">
+        <Link href="/dashboard" className="cursor-pointer flex items-center">
           <Logo variant="topbar" />
         </Link>
-        <button 
-          onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-          className="p-2 rounded-lg bg-dark/40 text-text hover:text-primary transition-colors cursor-pointer border border-muted/15 flex items-center justify-center"
-          aria-label="Menu"
-        >
-          <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            {mobileMenuOpen ? (
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            ) : (
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+
+        {/* Controles do Topo no Mobile: Notificações + Tema + Perfil */}
+        <div className="flex items-center gap-1.5 relative">
+          {/* Botão de Notificações com Indicador */}
+          <button
+            onClick={handleNotificationBellClick}
+            className="p-2 rounded-xl text-muted hover:text-text hover:bg-dark/50 transition-colors cursor-pointer relative"
+            aria-label="Notificações de Estudo"
+            title="Notificações"
+          >
+            <Bell className="w-5 h-5" />
+            {(studyAlert || showNotifPermissionPrompt) && (
+              <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-primary animate-pulse" />
             )}
-          </svg>
-        </button>
+          </button>
+
+          {/* Alternador Rápido de Tema (Claro / Escuro) */}
+          {mounted && (
+            <button
+              onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+              className="p-2 rounded-xl text-muted hover:text-text hover:bg-dark/50 transition-colors cursor-pointer"
+              aria-label="Alternar Tema"
+              title={theme === "dark" ? "Ativar Modo Claro" : "Ativar Modo Escuro"}
+            >
+              {theme === "dark" ? (
+                <Sun className="w-4 h-4 text-amber-400" />
+              ) : (
+                <Moon className="w-4 h-4 text-indigo-500" />
+              )}
+            </button>
+          )}
+
+          {/* Gatilho de Avatar / Perfil no Mobile */}
+          <button
+            onClick={() => setMobileProfileOpen(!mobileProfileOpen)}
+            className="p-0.5 rounded-full ring-2 ring-primary/30 hover:ring-primary/60 transition-all cursor-pointer relative ml-1"
+            aria-label="Menu do Utilizador"
+          >
+            {user.photoUrl ? (
+              <img
+                src={user.photoUrl}
+                alt={user.displayName || user.name}
+                className="h-7 w-7 rounded-full object-cover"
+              />
+            ) : (
+              <div className="h-7 w-7 rounded-full bg-primary/20 text-primary font-bold text-xs flex items-center justify-center">
+                {(user.displayName || user.name || "U").charAt(0).toUpperCase()}
+              </div>
+            )}
+          </button>
+
+          {/* Dropdown Menu do Perfil no Mobile */}
+          {mobileProfileOpen && (
+            <>
+              <div 
+                className="fixed inset-0 z-40 bg-black/40 backdrop-blur-xs" 
+                onClick={() => setMobileProfileOpen(false)} 
+              />
+              <div className="absolute right-0 top-11 w-64 bg-surface border border-muted/20 rounded-2xl p-3 shadow-2xl z-50 space-y-1.5 animate-slide-down">
+                {/* Info do Utilizador */}
+                <div className="p-2 border-b border-muted/15 flex items-center gap-2.5">
+                  <div className="h-9 w-9 rounded-full bg-primary/20 text-primary font-bold text-sm flex items-center justify-center shrink-0">
+                    {(user.displayName || user.name || "U").charAt(0).toUpperCase()}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-xs font-bold text-text truncate">
+                      {user.displayName || user.name}
+                    </p>
+                    <p className="text-[10px] text-muted truncate">
+                      {user.email}
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => {
+                    handleOpenProfileModal();
+                    setMobileProfileOpen(false);
+                  }}
+                  className="w-full flex items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-semibold hover:bg-dark text-text transition-colors cursor-pointer"
+                >
+                  <UserIcon className="w-4 h-4 text-primary" />
+                  <span>Editar Perfil</span>
+                </button>
+
+                <button
+                  onClick={() => {
+                    setPersonalizationOpen(true);
+                    setMobileProfileOpen(false);
+                  }}
+                  className="w-full flex items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-semibold hover:bg-dark text-text transition-colors cursor-pointer"
+                >
+                  <Sparkles className="w-4 h-4 text-secondary" />
+                  <span>Personalização</span>
+                </button>
+
+                {user.role === "admin" && (
+                  <Link
+                    href="/dashboard/admin"
+                    onClick={() => setMobileProfileOpen(false)}
+                    className="w-full flex items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-semibold hover:bg-dark text-text transition-colors cursor-pointer"
+                  >
+                    <ShieldCheck className="w-4 h-4 text-amber-500" />
+                    <span>Painel Admin</span>
+                  </Link>
+                )}
+
+                <button
+                  onClick={() => {
+                    setHelpOpen(true);
+                    setMobileProfileOpen(false);
+                  }}
+                  className="w-full flex items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-semibold hover:bg-dark text-text transition-colors cursor-pointer"
+                >
+                  <HelpCircle className="w-4 h-4 text-primary" />
+                  <span>Ajuda &amp; Suporte</span>
+                </button>
+
+                <button
+                  onClick={() => {
+                    setAboutOpen(true);
+                    setMobileProfileOpen(false);
+                  }}
+                  className="w-full flex items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-semibold hover:bg-dark text-text transition-colors cursor-pointer"
+                >
+                  <Rocket className="w-4 h-4 text-primary" />
+                  <span>Acerca da Emanus IA</span>
+                </button>
+
+                <div className="h-px bg-muted/15" />
+
+                <button
+                  onClick={() => {
+                    setMobileProfileOpen(false);
+                    handleLogout();
+                  }}
+                  className="w-full flex items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-bold text-danger hover:bg-danger/10 transition-colors cursor-pointer"
+                >
+                  <LogOut className="w-4 h-4" />
+                  <span>Terminar Sessão</span>
+                </button>
+              </div>
+            </>
+          )}
+        </div>
       </header>
 
-      {/* Mobile Drawer Overlay */}
-      {mobileMenuOpen && (
-        <div 
-          onClick={() => setMobileMenuOpen(false)}
-          className="fixed inset-0 bg-black/60 z-40 md:hidden backdrop-blur-sm"
-        />
-      )}
-
-      {/* Sidebar */}
-      <aside className={`
-        fixed md:static inset-y-0 left-0 w-64 border-r border-surface bg-surface flex flex-col z-50 transition-transform duration-300 md:translate-x-0
-        ${mobileMenuOpen ? "translate-x-0" : "-translate-x-full"}
-      `}>
+      {/* Desktop Sidebar (Intacta para Desktop, Oculta em Mobile onde dá lugar à Bottom Navigation) */}
+      <aside className="hidden md:flex fixed md:static inset-y-0 left-0 w-64 border-r border-surface bg-surface flex-col z-50 shrink-0">
         <div className="p-6 flex items-center justify-between">
           <Link href="/dashboard" className="cursor-pointer">
             <Logo variant="sidebar" />
           </Link>
-          <button 
-            onClick={() => setMobileMenuOpen(false)}
-            className="md:hidden p-1.5 rounded-lg bg-dark/40 text-muted hover:text-text border border-muted/10 cursor-pointer flex items-center justify-center"
-          >
-            <X className="w-5 h-5" />
-          </button>
         </div>
         <nav className="flex-1 space-y-1 px-4">
           {navItems.map((item) => {
@@ -781,9 +932,39 @@ export default function DashboardLayout({
       </aside>
 
       {/* Main Content */}
-      <main className="flex-1 overflow-auto bg-dark transition-colors duration-300">
+      <main className="flex-1 overflow-auto bg-dark transition-colors duration-300 pb-24 md:pb-0">
         {children}
       </main>
+
+      {/* Mobile Bottom Navigation Bar (replaces sidebar on mobile) */}
+      <footer className="fixed bottom-0 left-0 right-0 z-40 md:hidden bg-surface/95 backdrop-blur-xl border-t border-muted/15 shadow-[0_-4px_25px_rgba(0,0,0,0.06)] px-1 py-1 transition-colors pb-[env(safe-area-inset-bottom,0.25rem)]">
+        <nav className="flex items-center justify-around max-w-lg mx-auto">
+          {bottomNavItems.map((item) => {
+            const isActive = pathname === item.route;
+            const Icon = item.icon;
+            return (
+              <Link
+                key={item.label}
+                href={item.route}
+                className={`flex flex-col items-center justify-center py-1 flex-1 relative active:scale-90 transition-all select-none cursor-pointer ${
+                  isActive ? "text-primary" : "text-muted hover:text-text"
+                }`}
+              >
+                <div className={`p-1.5 rounded-xl transition-all duration-200 ${
+                  isActive ? "bg-primary/15 text-primary shadow-xs" : "text-muted hover:text-text"
+                }`}>
+                  <Icon className="w-5 h-5" />
+                </div>
+                <span className={`text-[10px] mt-0.5 tracking-tight transition-colors ${
+                  isActive ? "font-bold text-primary" : "font-medium text-muted"
+                }`}>
+                  {item.label}
+                </span>
+              </Link>
+            );
+          })}
+        </nav>
+      </footer>
 
       {/* Modal "Acerca da Emanus IA" */}
       {aboutOpen && (
