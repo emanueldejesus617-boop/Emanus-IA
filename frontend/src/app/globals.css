@@ -170,3 +170,20 @@ body {
 .animate-slide-down {
   animation: slideDown 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
+
+@keyframes emanusTimer {
+  from {
+    width: 0%;
+  }
+  to {
+    width: 100%;
+  }
+}
+
+.animate-timer-15s {
+  animation: emanusTimer 15s linear forwards;
+}
+
+.animate-timer-45s {
+  animation: emanusTimer 45s linear forwards;
+}

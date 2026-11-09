@@ -122,6 +122,12 @@ export default function LessonsPage() {
     if (storedProfile) setProfile(JSON.parse(storedProfile));
     loadProgress();
     loadPrograms();
+
+    const preselected = localStorage.getItem("emanus_selected_lesson_subject");
+    if (preselected) {
+      localStorage.removeItem("emanus_selected_lesson_subject");
+      setSelectedSubject(preselected);
+    }
   }, []);
 
   // Fetch official curriculum when a subject is chosen

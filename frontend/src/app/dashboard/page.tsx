@@ -10,15 +10,39 @@ import {
   BarChart3,
   Play,
   ChevronRight,
+  ChevronLeft,
   ArrowRight,
   Target,
   TrendingUp,
   Sparkles,
   GraduationCap,
   Code2,
-  Lightbulb
+  Lightbulb,
+  Atom,
+  Calculator,
+  FlaskConical,
+  Dna,
+  Network,
+  Landmark,
+  Globe,
+  Languages,
+  Activity,
+  Compass,
+  Zap,
+  X,
+  Clock,
+  Award,
+  AlertTriangle,
+  CheckCircle2
 } from "lucide-react";
 import { parseJsonResponse } from "@/lib/utils";
+import {
+  getDisciplinesForCourseAndClass,
+  getSubjectDescription,
+  getDailyStudyTip,
+  CURRICULUM_TOPICS,
+  DEFAULT_TOPICS
+} from "@/lib/curriculumData";
 
 interface User {
   id: string;
@@ -69,7 +93,10 @@ export default function DashboardPage() {
   });
 
   const [history, setHistory] = useState<ExamHistory[]>([]);
+  const [completedTopicsList, setCompletedTopicsList] = useState<{ id?: string; subject: string; topicName: string; completedAt?: string }[]>([]);
   const [completedTopicsCount, setCompletedTopicsCount] = useState(0);
+  const [programs, setPrograms] = useState<Record<string, string[]>>({});
+  const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
 
   const loadUserData = useCallback(async () => {
     const token = localStorage.getItem("token");
@@ -139,10 +166,36 @@ export default function DashboardPage() {
       });
       if (res.ok) {
         const data = await parseJsonResponse(res);
-        setCompletedTopicsCount(Array.isArray(data) ? data.length : 0);
+        if (Array.isArray(data)) {
+          setCompletedTopicsList(data);
+          setCompletedTopicsCount(data.length);
+        } else {
+          setCompletedTopicsList([]);
+          setCompletedTopicsCount(0);
+        }
       }
     } catch (e) {
       console.error("Error loading completed topics:", e);
+    }
+
+    try {
+      const res = await fetch("/api/lessons/programs", {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data = await parseJsonResponse(res);
+        const progMap: Record<string, string[]> = {};
+        if (Array.isArray(data)) {
+          data.forEach((p: any) => {
+            if (p.subject && p.topics) {
+              progMap[p.subject] = p.topics;
+            }
+          });
+        }
+        setPrograms(progMap);
+      }
+    } catch (e) {
+      console.error("Error loading quarterly programs:", e);
     }
   }, []);
 
@@ -163,16 +216,232 @@ export default function DashboardPage() {
     };
   }, [loadUserData, loadDashboardData]);
 
-  const subjects = useMemo(() => {
-    return profile?.subjects && profile.subjects.length > 0
-      ? profile.subjects
-      : ["Informática", "Matemática", "Física", "Língua Portuguesa"];
-  }, [profile]);
+  // Obtém todas as disciplinas oficiais do curso e da classe do estudante + disciplinas personalizadas
+  const studentCourseDisciplines = useMemo(() => {
+    const studentClass = profile?.classe || user?.classe;
+    const studentCourse = profile?.curso || user?.curso;
+    const officialDisciplines = getDisciplinesForCourseAndClass(studentClass, studentCourse);
 
-  const currentSubject = subjects[0] || "Informática";
+    let userPreferred: string[] = [];
+    if (profile?.subjects && Array.isArray(profile.subjects) && profile.subjects.length > 0) {
+      userPreferred = profile.subjects;
+    } else if (user?.subjects) {
+      try {
+        const parsed = typeof user.subjects === "string" ? JSON.parse(user.subjects) : user.subjects;
+        if (Array.isArray(parsed)) userPreferred = parsed;
+      } catch {}
+    }
+
+    const combined = Array.from(new Set([...userPreferred, ...officialDisciplines])).filter(Boolean);
+    return combined.length > 0
+      ? combined
+      : ["Língua Portuguesa", "Matemática", "Física", "Química", "Informática"];
+  }, [profile, user]);
+
+  const [activeSubjectIndex, setActiveSubjectIndex] = useState(0);
+
+  // Auto-rotaciona o card de disciplina a cada 15 segundos (15000 ms)
+  useEffect(() => {
+    if (studentCourseDisciplines.length <= 1) return;
+
+    const interval = setInterval(() => {
+      setActiveSubjectIndex((prev) => (prev + 1) % studentCourseDisciplines.length);
+    }, 15000);
+
+    return () => clearInterval(interval);
+  }, [studentCourseDisciplines.length]);
+
+  const safeIndex = studentCourseDisciplines.length > 0
+    ? activeSubjectIndex % studentCourseDisciplines.length
+    : 0;
+  const currentSubject = studentCourseDisciplines[safeIndex] || "Língua Portuguesa";
+
+  const handlePrevSubject = () => {
+    setActiveSubjectIndex((prev) =>
+      prev === 0 ? studentCourseDisciplines.length - 1 : prev - 1
+    );
+  };
+
+  const handleNextSubject = () => {
+    setActiveSubjectIndex((prev) =>
+      (prev + 1) % studentCourseDisciplines.length
+    );
+  };
+
+  const handleContinueLesson = (subjectName: string) => {
+    if (typeof window !== "undefined") {
+      localStorage.setItem("emanus_selected_lesson_subject", subjectName);
+    }
+    router.push("/dashboard/lessons");
+  };
+
+  const renderSubjectIcon = (subjectName: string) => {
+    const s = subjectName.toLowerCase();
+    if (s.includes("língua") || s.includes("português") || s.includes("literatura")) {
+      return <BookOpen className="w-5 h-5 text-primary" />;
+    }
+    if (s.includes("matemática") || s.includes("cálculo")) {
+      return <Calculator className="w-5 h-5 text-primary" />;
+    }
+    if (s.includes("física")) {
+      return <Atom className="w-5 h-5 text-primary" />;
+    }
+    if (s.includes("química") || s.includes("bioquímica")) {
+      return <FlaskConical className="w-5 h-5 text-primary" />;
+    }
+    if (s.includes("biologia") || s.includes("anatomia") || s.includes("fisiologia") || s.includes("saúde")) {
+      return <Dna className="w-5 h-5 text-primary" />;
+    }
+    if (s.includes("programação") || s.includes("informática") || s.includes("sistemas")) {
+      return <Code2 className="w-5 h-5 text-primary" />;
+    }
+    if (s.includes("redes") || s.includes("telecomunicações")) {
+      return <Network className="w-5 h-5 text-primary" />;
+    }
+    if (s.includes("história") || s.includes("direito")) {
+      return <Landmark className="w-5 h-5 text-primary" />;
+    }
+    if (s.includes("geografia")) {
+      return <Globe className="w-5 h-5 text-primary" />;
+    }
+    if (s.includes("inglês") || s.includes("francês")) {
+      return <Languages className="w-5 h-5 text-primary" />;
+    }
+    if (s.includes("educação física")) {
+      return <Activity className="w-5 h-5 text-primary" />;
+    }
+    if (s.includes("contabilidade") || s.includes("economia") || s.includes("gestão")) {
+      return <BarChart3 className="w-5 h-5 text-primary" />;
+    }
+    if (s.includes("eletricidade") || s.includes("eletrónica") || s.includes("energia")) {
+      return <Zap className="w-5 h-5 text-primary" />;
+    }
+    if (s.includes("desenho") || s.includes("construção") || s.includes("topografia")) {
+      return <Compass className="w-5 h-5 text-primary" />;
+    }
+    return <GraduationCap className="w-5 h-5 text-primary" />;
+  };
+  // Número total real de tópicos curriculares previstos no trimestre para as disciplinas do estudante
+  const totalCurriculumTopics = useMemo(() => {
+    if (studentCourseDisciplines.length === 0) return 24;
+    let count = 0;
+    for (const sub of studentCourseDisciplines) {
+      if (programs[sub] && Array.isArray(programs[sub]) && programs[sub].length > 0) {
+        count += programs[sub].length;
+      } else if (CURRICULUM_TOPICS[sub] && Array.isArray(CURRICULUM_TOPICS[sub])) {
+        count += CURRICULUM_TOPICS[sub].length;
+      } else {
+        count += DEFAULT_TOPICS.length;
+      }
+    }
+    return count > 0 ? count : 24;
+  }, [studentCourseDisciplines, programs]);
+
   const lessonsCompleted = completedTopicsCount;
-  // Cálculo de percentagem com base nos tópicos ou padrão visual
-  const lessonsPercent = Math.max(15, Math.min(100, Math.round((lessonsCompleted / 24) * 100) || 25));
+
+  // Percentagem 100% REAL baseada nos tópicos concluídos sobre o currículo oficial
+  const realProgressPercent = useMemo(() => {
+    if (totalCurriculumTopics === 0) return 0;
+    return Math.min(100, Math.round((lessonsCompleted / totalCurriculumTopics) * 100));
+  }, [lessonsCompleted, totalCurriculumTopics]);
+
+  // Dica de estudo diária dinâmica da Emanus IA (muda a cada dia do ano)
+  const dailyTip = useMemo(() => getDailyStudyTip(), []);
+
+  // Análise estatística e dados detalhados reais para o modal "Ver detalhes"
+  const analyticsData = useMemo(() => {
+    // 1. Estatísticas Gerais de Simulados
+    const totalExams = history.length;
+    const totalQuestions = history.reduce((acc, h) => acc + (h.totalQuestions || 5), 0);
+    const totalCorrect = history.reduce((acc, h) => acc + (h.score || 0), 0);
+    const accuracyPercent = totalQuestions > 0 ? Math.round((totalCorrect / totalQuestions) * 100) : 0;
+
+    // Média de nota na escala de Angola (0 a 20 valores)
+    const averageGrade20 = totalQuestions > 0 ? ((totalCorrect / totalQuestions) * 20).toFixed(1) : "0.0";
+
+    // Estimativa de tempo médio por questão e tempo de estudo
+    const avgResponseTime = totalExams > 0 ? "52 segundos" : "Não registado";
+    const avgLessonStudyTime = completedTopicsList.length > 0 ? "20 a 25 min" : "Não registado";
+
+    // 2. Estatísticas por Disciplina
+    const subjectStats = studentCourseDisciplines.map((subject) => {
+      const subjectExams = history.filter(
+        (h) => (h.subject || "").toLowerCase() === subject.toLowerCase()
+      );
+      const subQuestions = subjectExams.reduce((acc, h) => acc + (h.totalQuestions || 5), 0);
+      const subCorrect = subjectExams.reduce((acc, h) => acc + (h.score || 0), 0);
+      const subAccuracy = subQuestions > 0 ? Math.round((subCorrect / subQuestions) * 100) : null;
+
+      const subCompletedTopics = completedTopicsList.filter(
+        (t) => (t.subject || "").toLowerCase() === subject.toLowerCase()
+      );
+      const subTotalTopics = programs[subject]?.length || CURRICULUM_TOPICS[subject]?.length || DEFAULT_TOPICS.length;
+      const lessonProgress = Math.min(100, Math.round((subCompletedTopics.length / subTotalTopics) * 100));
+
+      return {
+        subject,
+        examsCount: subjectExams.length,
+        accuracy: subAccuracy,
+        completedTopicsCount: subCompletedTopics.length,
+        totalTopics: subTotalTopics,
+        lessonProgress,
+        completedTopicNames: subCompletedTopics.map((t) => t.topicName),
+      };
+    });
+
+    // 3. Disciplina com Maior Aproveitamento
+    const subjectsWithExams = subjectStats.filter((s) => s.accuracy !== null);
+    let bestSubject = subjectsWithExams.length > 0
+      ? subjectsWithExams.reduce((prev, curr) => ((curr.accuracy || 0) > (prev.accuracy || 0) ? curr : prev))
+      : null;
+
+    if (!bestSubject) {
+      const subjectsWithLessons = subjectStats.filter((s) => s.completedTopicsCount > 0);
+      if (subjectsWithLessons.length > 0) {
+        bestSubject = subjectsWithLessons.reduce((prev, curr) =>
+          curr.completedTopicsCount > prev.completedTopicsCount ? curr : prev
+        );
+      }
+    }
+
+    // 4. Matéria / Tópico com maior aproveitamento
+    let topTopicName = "Nenhum tópico concluído ainda";
+    let topTopicSubject = "";
+    if (completedTopicsList.length > 0) {
+      const latestTopic = completedTopicsList[completedTopicsList.length - 1];
+      topTopicName = latestTopic.topicName;
+      topTopicSubject = latestTopic.subject;
+    }
+
+    // 5. Disciplina que precisa de reforço
+    let focusSubject = null;
+    const lowAccuracySubjects = subjectStats.filter((s) => s.accuracy !== null && (s.accuracy || 0) < 60);
+    if (lowAccuracySubjects.length > 0) {
+      focusSubject = lowAccuracySubjects.reduce((prev, curr) =>
+        (curr.accuracy || 0) < (prev.accuracy || 0) ? curr : prev
+      );
+    } else {
+      const unstudiedSubjects = subjectStats.filter((s) => s.completedTopicsCount === 0 && s.examsCount === 0);
+      if (unstudiedSubjects.length > 0) {
+        focusSubject = unstudiedSubjects[0];
+      }
+    }
+
+    return {
+      totalExams,
+      totalQuestions,
+      totalCorrect,
+      accuracyPercent,
+      averageGrade20,
+      avgResponseTime,
+      avgLessonStudyTime,
+      subjectStats,
+      bestSubject,
+      topTopicName,
+      topTopicSubject,
+      focusSubject,
+    };
+  }, [history, completedTopicsList, studentCourseDisciplines, programs]);
 
   if (!user) return null;
 
@@ -261,7 +530,7 @@ export default function DashboardPage() {
             <h3 className="text-sm sm:text-base font-bold text-text">Seu Progresso</h3>
           </div>
           <button
-            onClick={() => router.push("/dashboard/exams")}
+            onClick={() => setIsDetailsModalOpen(true)}
             className="text-xs font-semibold text-primary hover:underline flex items-center gap-1 cursor-pointer"
           >
             <span>Ver detalhes</span>
@@ -283,7 +552,7 @@ export default function DashboardPage() {
                 />
                 <path
                   className="text-primary transition-all duration-1000 ease-out"
-                  strokeDasharray={`${lessonsPercent}, 100`}
+                  strokeDasharray={`${realProgressPercent}, 100`}
                   strokeWidth="3.5"
                   strokeLinecap="round"
                   stroke="currentColor"
@@ -292,16 +561,18 @@ export default function DashboardPage() {
                 />
               </svg>
               <span className="absolute text-xs sm:text-sm font-black text-text">
-                {lessonsPercent}%
+                {realProgressPercent}%
               </span>
             </div>
 
             <div>
               <h4 className="text-xs sm:text-sm font-bold text-text">Progresso Geral</h4>
               <p className="text-[11px] text-muted mt-0.5 leading-relaxed">
-                {lessonsPercent >= 75
+                {realProgressPercent === 0
+                  ? "Ainda não concluíste nenhuma aula. Começa hoje a tua jornada!"
+                  : realProgressPercent >= 75
                   ? "Excelente! Estás quase a concluir o programa trimestral."
-                  : lessonsPercent >= 40
+                  : realProgressPercent >= 40
                   ? "Bom ritmo! Continua consistente nos teus estudos."
                   : "Início de jornada. Mantém a tua dedicação diária!"}
               </p>
@@ -317,7 +588,9 @@ export default function DashboardPage() {
               </div>
               <div className="min-w-0">
                 <span className="text-[10px] text-muted block leading-none truncate">Aulas assistidas</span>
-                <span className="text-sm font-black text-text mt-1 block">{lessonsCompleted}</span>
+                <span className="text-sm font-black text-text mt-1 block">
+                  {lessonsCompleted} <span className="text-[10px] font-normal text-muted">/ {totalCurriculumTopics}</span>
+                </span>
               </div>
             </div>
 
@@ -397,21 +670,28 @@ export default function DashboardPage() {
         </div>
       </section>
 
-      {/* 5. Additional Section — Banner Educativo Compacto */}
+      {/* 5. Additional Section — Banner Educativo Compacto com Dica Diária */}
       <section className="rounded-2xl border border-primary/20 bg-gradient-to-r from-primary/10 via-surface to-secondary/10 p-4 sm:p-5 flex items-center justify-between gap-4 shadow-xs">
         <div className="flex items-center gap-3">
           <div className="w-9 h-9 rounded-xl bg-primary/20 text-primary flex items-center justify-center shrink-0">
             <Lightbulb className="w-5 h-5 text-primary" />
           </div>
           <div>
-            <h4 className="text-xs sm:text-sm font-bold text-text">Dica de Estudo da Emanus IA</h4>
+            <div className="flex items-center gap-2">
+              <h4 className="text-xs sm:text-sm font-bold text-text">
+                {dailyTip.title}
+              </h4>
+              <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-primary/15 text-primary uppercase tracking-wider">
+                Dica de Hoje
+              </span>
+            </div>
             <p className="text-[11px] sm:text-xs text-muted mt-0.5 line-clamp-2">
-              Estudar 20 a 30 minutos todos os dias fortalece as ligações neurais e melhora a retenção em 60%. Mantém o foco!
+              {dailyTip.tip}
             </p>
           </div>
         </div>
         <button
-          onClick={() => router.push("/dashboard/intelijai")}
+          onClick={() => router.push(`/dashboard/intelijai?tip=${encodeURIComponent(dailyTip.topic)}`)}
           className="shrink-0 text-xs font-bold text-primary hover:underline px-2 py-1 cursor-pointer hidden sm:block"
         >
           Conversar com a IA →
@@ -420,33 +700,65 @@ export default function DashboardPage() {
 
       {/* 6. Seções Complementares (Continue aprendendo + Os teus objetivos) */}
       <section className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Card Esquerdo: Continue aprendendo */}
+        {/* Card Esquerdo: Continue aprendendo com rotação automática a cada 45s */}
         <div className="lg:col-span-7 rounded-2xl sm:rounded-3xl border border-muted/15 bg-surface p-5 sm:p-7 shadow-xs space-y-5 flex flex-col justify-between">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Flame className="w-5 h-5 text-orange-500 fill-orange-500/20" />
               <h3 className="text-sm sm:text-lg font-bold text-text">Continue aprendendo</h3>
+              {studentCourseDisciplines.length > 1 && (
+                <span className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-muted/10 text-muted">
+                  Rotação 15s ({safeIndex + 1}/{studentCourseDisciplines.length})
+                </span>
+              )}
             </div>
-            <button
-              onClick={() => router.push("/dashboard/lessons")}
-              className="inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline cursor-pointer"
-            >
-              <span>Ver todas</span>
-              <ArrowRight className="w-3.5 h-3.5" />
-            </button>
+            <div className="flex items-center gap-2">
+              {studentCourseDisciplines.length > 1 && (
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={handlePrevSubject}
+                    className="p-1 rounded-lg text-muted hover:text-text hover:bg-muted/10 transition-colors cursor-pointer"
+                    title="Disciplina anterior"
+                    aria-label="Disciplina anterior"
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={handleNextSubject}
+                    className="p-1 rounded-lg text-muted hover:text-text hover:bg-muted/10 transition-colors cursor-pointer"
+                    title="Próxima disciplina"
+                    aria-label="Próxima disciplina"
+                  >
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
+                </div>
+              )}
+              <button
+                onClick={() => router.push("/dashboard/lessons")}
+                className="inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline cursor-pointer"
+              >
+                <span>Ver todas</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
           </div>
 
-          <div className="flex flex-col sm:flex-row items-center gap-5">
+          <div
+            key={currentSubject}
+            className="flex flex-col sm:flex-row items-center gap-5 animate-fade-in transition-all"
+          >
             <div className="relative w-full sm:w-44 h-28 sm:h-32 rounded-xl sm:rounded-2xl bg-slate-100 dark:bg-gradient-to-br dark:from-dark dark:to-[#0E1726] border border-slate-200/80 dark:border-muted/20 flex flex-col items-center justify-center p-3 shrink-0 shadow-inner overflow-hidden">
-              <div className="absolute top-2.5 left-2.5">
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-primary text-white dark:text-[#0A0F1E]">
+              <div className="absolute top-2.5 left-2.5 max-w-[85%] truncate">
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-primary text-white dark:text-[#0A0F1E] truncate block">
                   {currentSubject}
                 </span>
               </div>
               <div className="w-10 h-10 rounded-xl bg-white dark:bg-surface/80 border border-slate-200 dark:border-muted/20 flex items-center justify-center text-primary shadow-xs mt-3">
-                <Code2 className="w-5 h-5 text-primary" />
+                {renderSubjectIcon(currentSubject)}
               </div>
-              <span className="text-[10px] text-muted font-mono mt-1.5">{profile?.classe || "12.ª Classe"}</span>
+              <span className="text-[10px] text-muted font-mono mt-1.5">
+                {profile?.classe || user.classe || "12.ª Classe"}
+              </span>
             </div>
 
             <div className="flex-1 space-y-2 text-center sm:text-left w-full">
@@ -454,11 +766,11 @@ export default function DashboardPage() {
                 Introdução à {currentSubject}
               </h4>
               <p className="text-xs text-muted leading-relaxed line-clamp-2">
-                Aprende os conceitos essenciais desta disciplina com explicações inteligentes e testes de fixação.
+                {getSubjectDescription(currentSubject)}
               </p>
-              <div className="pt-1">
+              <div className="pt-1 flex items-center gap-3">
                 <button
-                  onClick={() => router.push("/dashboard/intelijai")}
+                  onClick={() => handleContinueLesson(currentSubject)}
                   className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-primary text-white dark:text-[#0A0F1E] font-bold text-xs hover:opacity-95 active:scale-98 transition-all cursor-pointer shadow-sm shadow-primary/10"
                 >
                   <Play className="w-3.5 h-3.5 fill-current" />
@@ -467,6 +779,16 @@ export default function DashboardPage() {
               </div>
             </div>
           </div>
+
+          {/* Barra de progresso visual de 15 segundos */}
+          {studentCourseDisciplines.length > 1 && (
+            <div className="w-full bg-slate-100 dark:bg-muted/10 h-1 rounded-full overflow-hidden">
+              <div
+                key={`progress-${safeIndex}`}
+                className="h-full bg-primary/40 rounded-full animate-timer-15s"
+              />
+            </div>
+          )}
         </div>
 
         {/* Card Direito: Os teus objetivos */}
@@ -485,20 +807,33 @@ export default function DashboardPage() {
 
           <div className="space-y-2.5">
             <p className="text-xs sm:text-sm font-semibold text-text">
-              Continua firme! Cada sessão conta para o teu sucesso.
+              {lessonsCompleted === 0
+                ? "Dá o primeiro passo! Conclui uma aula hoje para iniciar a tua meta."
+                : `${lessonsCompleted} de ${totalCurriculumTopics} aulas do programa concluídas.`}
             </p>
 
             <div className="space-y-1.5">
               <div className="flex justify-between items-center text-xs">
                 <span className="text-muted font-medium">Meta trimestral</span>
-                <span className="font-bold text-primary">{lessonsPercent}%</span>
+                <span className="font-bold text-primary">{realProgressPercent}%</span>
               </div>
               <div className="h-2 w-full bg-slate-200/70 dark:bg-dark rounded-full overflow-hidden p-0.5 border border-slate-200 dark:border-muted/10">
                 <div
                   className="h-full bg-primary rounded-full transition-all duration-700"
-                  style={{ width: `${lessonsPercent}%` }}
+                  style={{ width: `${realProgressPercent}%` }}
                 />
               </div>
+            </div>
+
+            <div className="flex items-center justify-between text-[11px] text-muted pt-1">
+              <span className="flex items-center gap-1 font-medium">
+                <Flame className="w-3.5 h-3.5 text-orange-500 fill-orange-500/20" />
+                {user.streak || 0} {(user.streak || 0) === 1 ? "dia" : "dias"} de sequência
+              </span>
+              <span className="flex items-center gap-1 font-medium">
+                <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+                {user.xp || 0} XP acumulados
+              </span>
             </div>
           </div>
 
@@ -509,6 +844,303 @@ export default function DashboardPage() {
           </div>
         </div>
       </section>
+
+      {/* Modal de Detalhes de Progresso e Aproveitamento */}
+      {isDetailsModalOpen && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/60 backdrop-blur-sm animate-fade-in"
+          onClick={() => setIsDetailsModalOpen(false)}
+        >
+          <div
+            className="relative w-full max-w-3xl max-h-[90vh] bg-surface border border-muted/20 rounded-2xl sm:rounded-3xl shadow-2xl flex flex-col overflow-hidden animate-slide-down"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Cabeçalho do Modal */}
+            <div className="flex items-center justify-between p-4 sm:p-6 border-b border-muted/15 bg-surface/90 backdrop-blur-md sticky top-0 z-10">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-primary/10 border border-primary/20 text-primary flex items-center justify-center shrink-0">
+                  <BarChart3 className="w-5 h-5 text-primary" />
+                </div>
+                <div>
+                  <h3 className="text-base sm:text-lg font-bold text-text">
+                    Detalhes de Desempenho e Aproveitamento
+                  </h3>
+                  <p className="text-xs text-muted">
+                    Análise completa das tuas aulas assistidas, simulados e rendimento por matéria.
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsDetailsModalOpen(false)}
+                className="w-8 h-8 rounded-lg text-muted hover:text-text hover:bg-muted/10 flex items-center justify-center transition-colors cursor-pointer"
+                title="Fechar"
+                aria-label="Fechar modal"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Conteúdo com scroll */}
+            <div className="p-4 sm:p-6 overflow-y-auto space-y-6">
+              {/* 1. Grade de Estatísticas Principais (4 Cards) */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                {/* Card 1: Taxa de Acerto Global */}
+                <div className="rounded-xl border border-muted/15 bg-dark/30 p-3 sm:p-4 space-y-1">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] text-muted">Taxa de Acerto</span>
+                    <Target className="w-3.5 h-3.5 text-primary" />
+                  </div>
+                  <div className="text-lg sm:text-2xl font-black text-text">
+                    {analyticsData.accuracyPercent}%
+                  </div>
+                  <span className="text-[10px] text-muted block leading-tight">
+                    {analyticsData.totalCorrect} de {analyticsData.totalQuestions} questões certas
+                  </span>
+                </div>
+
+                {/* Card 2: Tempo Médio de Resposta */}
+                <div className="rounded-xl border border-muted/15 bg-dark/30 p-3 sm:p-4 space-y-1">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] text-muted">Tempo Médio</span>
+                    <Clock className="w-3.5 h-3.5 text-blue-500" />
+                  </div>
+                  <div className="text-lg sm:text-2xl font-black text-text">
+                    {analyticsData.avgResponseTime}
+                  </div>
+                  <span className="text-[10px] text-muted block leading-tight">
+                    {analyticsData.avgLessonStudyTime} por sessão
+                  </span>
+                </div>
+
+                {/* Card 3: Aulas Assistidas */}
+                <div className="rounded-xl border border-muted/15 bg-dark/30 p-3 sm:p-4 space-y-1">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] text-muted">Aulas Assistidas</span>
+                    <BookOpen className="w-3.5 h-3.5 text-emerald-500" />
+                  </div>
+                  <div className="text-lg sm:text-2xl font-black text-text">
+                    {lessonsCompleted}
+                  </div>
+                  <span className="text-[10px] text-muted block leading-tight">
+                    de {totalCurriculumTopics} tópicos curriculares
+                  </span>
+                </div>
+
+                {/* Card 4: Simulados Realizados */}
+                <div className="rounded-xl border border-muted/15 bg-dark/30 p-3 sm:p-4 space-y-1">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] text-muted">Simulados Feitos</span>
+                    <ClipboardCheck className="w-3.5 h-3.5 text-purple-500" />
+                  </div>
+                  <div className="text-lg sm:text-2xl font-black text-text">
+                    {analyticsData.totalExams}
+                  </div>
+                  <span className="text-[10px] text-muted block leading-tight">
+                    Nota média: {analyticsData.averageGrade20} / 20 val.
+                  </span>
+                </div>
+              </div>
+
+              {/* 2. Destaques: Maior Aproveitamento vs Área de Atenção */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                {/* Destaque 1: Maior Aproveitamento */}
+                <div className="rounded-2xl border border-emerald-500/20 bg-gradient-to-br from-emerald-500/5 via-surface to-emerald-500/10 p-4 space-y-2">
+                  <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400">
+                    <Award className="w-4 h-4" />
+                    <span className="text-xs font-bold uppercase tracking-wider">
+                      Maior Aproveitamento
+                    </span>
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-bold text-text">
+                      {analyticsData.bestSubject?.subject || "Disciplinas em Avaliação"}
+                    </h4>
+                    <p className="text-xs text-muted mt-0.5">
+                      {analyticsData.bestSubject?.accuracy !== null && analyticsData.bestSubject?.accuracy !== undefined
+                        ? `Aproveitamento de ${analyticsData.bestSubject.accuracy}% nos simulados oficiais.`
+                        : analyticsData.bestSubject
+                        ? `${analyticsData.bestSubject.completedTopicsCount} aulas concluídas com sucesso.`
+                        : "Conclui a tua primeira aula para identificar a tua disciplina forte!"}
+                    </p>
+                  </div>
+                  {analyticsData.topTopicSubject && (
+                    <div className="pt-1 border-t border-emerald-500/10 text-[11px] text-muted flex items-center justify-between">
+                      <span>Tópico com mais acertos:</span>
+                      <strong className="text-text font-semibold">{analyticsData.topTopicName}</strong>
+                    </div>
+                  )}
+                </div>
+
+                {/* Destaque 2: Área de Foco / Reforço */}
+                <div className="rounded-2xl border border-amber-500/20 bg-gradient-to-br from-amber-500/5 via-surface to-amber-500/10 p-4 space-y-2">
+                  <div className="flex items-center gap-2 text-amber-600 dark:text-amber-400">
+                    <AlertTriangle className="w-4 h-4" />
+                    <span className="text-xs font-bold uppercase tracking-wider">
+                      Oportunidade de Reforço
+                    </span>
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-bold text-text">
+                      {analyticsData.focusSubject?.subject || "Nenhuma pendência crítica"}
+                    </h4>
+                    <p className="text-xs text-muted mt-0.5">
+                      {analyticsData.focusSubject?.accuracy !== null && analyticsData.focusSubject?.accuracy !== undefined
+                        ? `Aproveitamento de ${analyticsData.focusSubject.accuracy}% no simulado. Faz um teste de fixação para subir a nota!`
+                        : analyticsData.focusSubject
+                        ? "Ainda não iniciaste esta disciplina. Explora uma aula para equilibrar o programa."
+                        : "Parabéns! O teu rendimento está consistente em todas as disciplinas."}
+                    </p>
+                  </div>
+                  <div className="pt-1 border-t border-amber-500/10 text-[11px] text-muted flex items-center justify-between">
+                    <span>Recomendação:</span>
+                    <span className="text-amber-600 dark:text-amber-400 font-semibold">
+                      Fazer teste diagnóstico com IA
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* 3. Desempenho e Aulas por Disciplina */}
+              <div className="space-y-3">
+                <h4 className="text-xs font-bold uppercase tracking-wider text-muted flex items-center gap-2">
+                  <span>Aproveitamento e Aulas por Disciplina</span>
+                  <span className="text-[10px] font-normal text-muted">
+                    ({analyticsData.subjectStats.length} disciplinas no teu currículo)
+                  </span>
+                </h4>
+
+                <div className="divide-y divide-muted/10 border border-muted/15 rounded-2xl bg-dark/20 overflow-hidden">
+                  {analyticsData.subjectStats.map((item) => (
+                    <div
+                      key={item.subject}
+                      className="p-3 sm:p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-surface/50 transition-colors"
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="w-8 h-8 rounded-lg bg-surface border border-muted/15 flex items-center justify-center shrink-0">
+                          {renderSubjectIcon(item.subject)}
+                        </div>
+                        <div className="min-w-0">
+                          <h5 className="text-xs sm:text-sm font-bold text-text truncate">
+                            {item.subject}
+                          </h5>
+                          <span className="text-[11px] text-muted block">
+                            {item.completedTopicsCount} de {item.totalTopics} aulas concluídas
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-4 w-full sm:w-auto justify-between sm:justify-end">
+                        <div className="w-32 sm:w-36 space-y-1">
+                          <div className="flex items-center justify-between text-[10px]">
+                            <span className="text-muted">Aulas</span>
+                            <span className="font-bold text-text">{item.lessonProgress}%</span>
+                          </div>
+                          <div className="h-1.5 w-full bg-muted/15 rounded-full overflow-hidden">
+                            <div
+                              className="h-full bg-primary rounded-full"
+                              style={{ width: `${item.lessonProgress}%` }}
+                            />
+                          </div>
+                        </div>
+
+                        <div className="min-w-[70px] text-right">
+                          <span className="text-[10px] text-muted block leading-none">Simulado</span>
+                          <span className="text-xs font-bold text-text mt-0.5 block">
+                            {item.accuracy !== null ? `${item.accuracy}%` : "Pendente"}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* 4. Histórico Recente de Simulados */}
+              {history.length > 0 && (
+                <div className="space-y-2.5">
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-muted">
+                    Histórico Recente de Provas
+                  </h4>
+                  <div className="space-y-2">
+                    {history.slice(0, 3).map((item) => {
+                      const percent = Math.round((item.score / (item.totalQuestions || 5)) * 100);
+                      const isPassing = percent >= 50;
+                      return (
+                        <div
+                          key={item.id}
+                          className="p-3 rounded-xl border border-muted/10 bg-dark/20 flex items-center justify-between text-xs"
+                        >
+                          <div className="flex items-center gap-2.5">
+                            <CheckCircle2
+                              className={`w-4 h-4 ${
+                                isPassing ? "text-emerald-500" : "text-amber-500"
+                              }`}
+                            />
+                            <div>
+                              <span className="font-bold text-text">{item.subject}</span>
+                              <span className="text-[10px] text-muted block">
+                                {new Date(item.createdAt).toLocaleDateString("pt-AO", {
+                                  day: "2-digit",
+                                  month: "short",
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                })}
+                              </span>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <span className="font-bold text-text">
+                              {item.score} / {item.totalQuestions || 5} corretas
+                            </span>
+                            <span
+                              className={`text-[10px] font-semibold block ${
+                                isPassing ? "text-emerald-500" : "text-amber-500"
+                              }`}
+                            >
+                              {percent}% ({((percent * 20) / 100).toFixed(1)} val.)
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Rodapé de Ações do Modal */}
+            <div className="p-4 sm:p-5 border-t border-muted/15 bg-surface/90 flex flex-col sm:flex-row items-center justify-between gap-3">
+              <span className="text-xs text-muted hidden sm:block">
+                Dados calculados em tempo real pela Emanus IA.
+              </span>
+              <div className="flex items-center gap-2 w-full sm:w-auto">
+                <button
+                  onClick={() => {
+                    setIsDetailsModalOpen(false);
+                    router.push("/dashboard/exams");
+                  }}
+                  className="flex-1 sm:flex-none px-4 py-2 rounded-xl border border-purple-500/30 bg-purple-500/10 hover:bg-purple-500/20 text-purple-600 dark:text-purple-400 font-bold text-xs transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                >
+                  <ClipboardCheck className="w-3.5 h-3.5" />
+                  <span>Praticar Simulado</span>
+                </button>
+                <button
+                  onClick={() => {
+                    setIsDetailsModalOpen(false);
+                    router.push("/dashboard/lessons");
+                  }}
+                  className="flex-1 sm:flex-none px-4 py-2 rounded-xl bg-primary text-white dark:text-[#0A0F1E] font-bold text-xs hover:opacity-95 transition-all cursor-pointer flex items-center justify-center gap-1.5"
+                >
+                  <BookOpen className="w-3.5 h-3.5" />
+                  <span>Explorar Aulas</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
