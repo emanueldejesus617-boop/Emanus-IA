@@ -1,13 +1,18 @@
 {
   "name": "Emanus IA - O teu professor",
   "short_name": "Emanus IA",
-  "description": "Plataforma educacional com Inteligência Artificial para estudantes angolanos.",
-  "start_url": "/",
+  "description": "Plataforma educacional com Inteligência Artificial para estudantes angolanos. Aprende, pratica e avança com o teu professor virtual.",
+  "start_url": "/dashboard",
   "id": "/",
+  "scope": "/",
   "display": "standalone",
+  "display_override": ["window-controls-overlay", "standalone", "minimal-ui", "browser"],
   "background_color": "#0B0F17",
-  "theme_color": "#00E599",
+  "theme_color": "#00C896",
   "orientation": "portrait-primary",
+  "lang": "pt-AO",
+  "dir": "ltr",
+  "prefer_related_applications": false,
   "icons": [
     {
       "src": "/favicon-16.png",
@@ -18,6 +23,12 @@
     {
       "src": "/favicon-32.png",
       "sizes": "32x32",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/apple-touch-icon.png",
+      "sizes": "180x180",
       "type": "image/png",
       "purpose": "any"
     },
@@ -43,14 +54,51 @@
   "categories": ["education", "productivity"],
   "shortcuts": [
     {
-      "name": "Emanus IA Chat",
+      "name": "Dashboard",
+      "short_name": "Início",
       "url": "/dashboard",
-      "description": "Aceder diretamente ao tutor virtual"
+      "description": "Ir para o painel principal",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
     },
     {
-      "name": "Simulador de Exames",
-      "url": "/dashboard",
-      "description": "Praticar com provas curriculares"
+      "name": "Emanus IA Chat",
+      "short_name": "Emanus",
+      "url": "/dashboard/emanus",
+      "description": "Conversar com o tutor virtual",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Simulados",
+      "short_name": "Simulados",
+      "url": "/dashboard/exams",
+      "description": "Praticar com provas curriculares",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Horário",
+      "short_name": "Horário",
+      "url": "/dashboard/schedule",
+      "description": "Ver o horário de estudo",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
     }
-  ]
+  ],
+  "screenshots": [
+    {
+      "src": "/screenshots/mobile-dashboard.png",
+      "sizes": "390x844",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Dashboard da Emanus IA no telemóvel"
+    },
+    {
+      "src": "/screenshots/desktop-dashboard.png",
+      "sizes": "1280x720",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "Dashboard da Emanus IA no computador"
+    }
+  ],
+  "edge_side_panel": {
+    "preferred_width": 400
+  }
 }

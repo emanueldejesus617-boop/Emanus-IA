@@ -44,6 +44,32 @@ const nextConfig: NextConfig = {
   },
   async headers() {
     return [
+      // ── Service Worker: sem cache para garantir atualização imediata ──
+      {
+        source: '/sw.js',
+        headers: [
+          { key: 'Cache-Control', value: 'public, max-age=0, must-revalidate' },
+          { key: 'Service-Worker-Allowed', value: '/' },
+          { key: 'Content-Type', value: 'application/javascript; charset=utf-8' },
+        ],
+      },
+      // ── Manifest PWA ──
+      {
+        source: '/manifest.json',
+        headers: [
+          { key: 'Cache-Control', value: 'public, max-age=0, must-revalidate' },
+          { key: 'Content-Type', value: 'application/manifest+json; charset=utf-8' },
+          { key: 'Access-Control-Allow-Origin', value: '*' },
+        ],
+      },
+      // ── assetlinks.json para TWA Android ──
+      {
+        source: '/.well-known/assetlinks.json',
+        headers: [
+          { key: 'Content-Type', value: 'application/json; charset=utf-8' },
+          { key: 'Access-Control-Allow-Origin', value: '*' },
+        ],
+      },
       {
         source: '/(.*)',
         headers: [
