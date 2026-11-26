@@ -1,0 +1,52 @@
+{
+  "name": "emanus-ia",
+  "version": "1.0.0",
+  "description": "Emanus IA — O teu professor | Plataforma educacional com IA para estudantes angolanos",
+  "main": "main.js",
+  "author": {
+    "name": "Emanuel Ambrósio",
+    "email": "emanueldejesus617@gmail.com"
+  },
+  "homepage": "https://emanus-ia.vercel.app",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder build --win --publish never",
+    "dist": "electron-builder"
+  },
+  "build": {
+    "appId": "ao.emanus.app",
+    "productName": "Emanus IA",
+    "copyright": "Copyright © 2026 Emanus IA",
+    "directories": {
+      "output": "dist",
+      "buildResources": "assets"
+    },
+    "files": [
+      "main.js",
+      "assets/**/*"
+    ],
+    "asar": true,
+    "compression": "maximum",
+    "electronDownload": {
+      "isVerifyChecksum": false
+    },
+    "win": {
+      "icon": "assets/icon.ico",
+      "target": "nsis",
+      "signExecutable": false,
+      "requestedExecutionLevel": "asInvoker"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Emanus IA"
+    }
+  },
+  "devDependencies": {
+    "electron": "^33.0.0",
+    "electron-builder": "^26.18.0"
+  }
+}

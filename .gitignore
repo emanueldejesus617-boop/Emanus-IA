@@ -6,6 +6,8 @@ web_modules/
 # Build outputs
 dist/
 build/
+bin/
+obj/
 .next/
 out/
 .drizzle/
