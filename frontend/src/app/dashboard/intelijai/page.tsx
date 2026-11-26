@@ -848,22 +848,13 @@ export default function IntelijaiPage() {
                     <span className="text-[10px] text-muted/60 truncate">{new Date(conv.createdAt).toLocaleDateString('pt-PT', { day: '2-digit', month: 'short' })}</span>
                   </div>
                 </div>
-                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-                  <button
-                    onClick={(e) => { e.stopPropagation(); handleExportSavedConversationPdf(conv); }}
-                    className="hover:text-primary text-muted p-1 rounded transition-colors cursor-pointer"
-                    title="Exportar Conversa para PDF"
-                  >
-                    <FileDown className="w-3.5 h-3.5" />
-                  </button>
-                  <button
-                    onClick={(e) => { e.stopPropagation(); deleteConversation(conv.id); }}
-                    className="hover:text-danger text-muted p-1 rounded transition-colors cursor-pointer"
-                    title="Eliminar Conversa"
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18" /><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" /><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" /></svg>
-                  </button>
-                </div>
+                <button
+                  onClick={(e) => { e.stopPropagation(); deleteConversation(conv.id); }}
+                  className="opacity-0 group-hover:opacity-100 hover:text-danger p-1 rounded transition-opacity cursor-pointer shrink-0"
+                  title="Eliminar Conversa"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18" /><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" /><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" /></svg>
+                </button>
               </div>
             ))
           )}
@@ -891,24 +882,8 @@ export default function IntelijaiPage() {
             </span>
           )}
 
-          {/* Botão de Exportar PDF */}
-          <button
-            type="button"
-            onClick={handleExportFullChatPdf}
-            disabled={messages.length === 0}
-            className={`ml-auto px-2.5 py-1 text-[11px] font-bold rounded-xl border transition-all cursor-pointer active:scale-95 flex items-center gap-1.5 shadow-sm ${
-              messages.length > 0
-                ? "bg-primary/10 border-primary/30 text-primary hover:bg-primary/20 shadow-[0_0_10px_rgba(0,200,150,0.15)]"
-                : "bg-surface/50 border-muted/10 text-muted opacity-40 cursor-not-allowed"
-            }`}
-            title={messages.length > 0 ? "Gerar e Baixar PDF da Conversa" : "Inicia uma conversa para gerar PDF"}
-          >
-            <FileDown className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Gerar PDF</span>
-          </button>
-
           {/* Controlos de Áudio da Emanus */}
-          <div className="flex items-center gap-2 bg-surface/50 border border-muted/10 rounded-xl px-2 py-1 shadow-sm">
+          <div className="ml-auto flex items-center gap-2 bg-surface/50 border border-muted/10 rounded-xl px-2 py-1 shadow-sm">
             {isSpeaking && (
               <div className="flex items-center gap-0.5 px-1.5" title="A reproduzir áudio...">
                 <span className="w-0.5 h-3 bg-primary rounded-full animate-bounce"></span>
@@ -1014,22 +989,9 @@ export default function IntelijaiPage() {
                   <div className={"max-w-[80%] rounded-2xl p-4 " + (msg.role === "user" ? "bg-primary text-dark rounded-br-none font-medium shadow-md" : "bg-surface border border-muted/10 text-text rounded-bl-none shadow-sm min-w-[150px]")}>
                     {msg.role === "model" && (
                       <div className="flex justify-between items-center w-full mb-2 pb-2 border-b border-muted/10 animate-fade-in">
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs font-semibold text-primary/80">Emanus IA</span>
-                          {activeConversationId && (
-                            <span className="text-[9px] text-muted">{activeSubject}</span>
-                          )}
-                        </div>
-                        {textPart?.text && (
-                          <button
-                            type="button"
-                            onClick={() => exportSingleMessageToPdf(textPart.text!, activeSubject, profile?.classe)}
-                            className="text-[10px] text-muted hover:text-primary transition-colors flex items-center gap-1 px-1.5 py-0.5 rounded-md hover:bg-dark/40 border border-transparent hover:border-primary/20 cursor-pointer"
-                            title="Gerar PDF desta resposta"
-                          >
-                            <FileDown className="w-3 h-3 text-primary" />
-                            <span className="hidden sm:inline font-medium">Exportar PDF</span>
-                          </button>
+                        <span className="text-xs font-semibold text-primary/80">Emanus IA</span>
+                        {activeConversationId && (
+                          <span className="text-[9px] text-muted">{activeSubject}</span>
                         )}
                       </div>
                     )}
@@ -1068,6 +1030,64 @@ export default function IntelijaiPage() {
                         </div>
                       )}
                     </div>
+
+                    {/* Cartão de Download de PDF Gerado pela Emanus IA quando o aluno pediu ou a IA gerou */}
+                    {msg.role === "model" && textPart?.text && (() => {
+                      const prevUserMsg = i > 0 && messages[i - 1].role === "user"
+                        ? messages[i - 1].parts.find(p => p.text)?.text || ""
+                        : "";
+                      const isPdfRequested =
+                        /\b(pdf|documento|apostila|ficha de estudo|relat[oó]rio|resumo em pdf)\b/i.test(prevUserMsg) ||
+                        /\b(preparei o (teu|seu)?\s*pdf|ger(ei|ado) (o|um)?\s*pdf|documento em pdf|baixa(r)? o pdf|descarrega(r)? o pdf|est[aá] pronto o (teu|seu)?\s*pdf)\b/i.test(textPart.text);
+
+                      if (!isPdfRequested) return null;
+
+                      const titleMatch = textPart.text.match(/(?:t[ií]tulo|tema|estudo de|resumo de)[:\s]+([^\n\r]+)/i);
+                      const rawTitle = titleMatch?.[1]?.replace(/[*#]/g, "").trim();
+                      const firstLine = textPart.text.trim().split("\n")[0].replace(/[*#]/g, "").trim();
+                      const docTitle = (rawTitle && rawTitle.length > 3 && rawTitle.length < 60)
+                        ? rawTitle
+                        : (firstLine && firstLine.length > 5 && firstLine.length < 50)
+                          ? firstLine
+                          : `Caderno de Estudo — ${activeSubject}`;
+
+                      return (
+                        <div className="mt-4 p-3.5 sm:p-4 rounded-2xl bg-gradient-to-r from-emerald-950/40 via-surface to-dark border border-primary/40 shadow-lg animate-slide-up flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                          <div className="flex items-center gap-3 overflow-hidden">
+                            <div className="w-11 h-11 rounded-xl bg-primary/20 border border-primary/40 flex items-center justify-center text-primary shrink-0 shadow-sm">
+                              <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/>
+                                <polyline points="14 2 14 8 20 8"/>
+                                <path d="M10 12v6"/>
+                                <path d="M10 15h3a1.5 1.5 0 0 0 0-3h-3"/>
+                              </svg>
+                            </div>
+                            <div className="overflow-hidden text-left">
+                              <div className="flex items-center gap-2">
+                                <span className="text-[10px] font-bold uppercase tracking-wider text-primary bg-primary/10 px-2 py-0.5 rounded-full border border-primary/20">
+                                  PDF Gerado
+                                </span>
+                                <span className="text-[11px] text-muted">A4 • Pronto a Baixar</span>
+                              </div>
+                              <h4 className="text-sm font-bold text-text truncate mt-0.5">
+                                {docTitle}
+                              </h4>
+                              <p className="text-[11px] text-muted truncate">
+                                {activeSubject} {profile?.classe ? `• ${profile.classe}` : ""}
+                              </p>
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => exportSingleMessageToPdf(textPart.text!, docTitle, profile?.classe)}
+                            className="px-4 py-2.5 bg-primary hover:bg-primary/90 text-dark font-bold text-xs rounded-xl flex items-center justify-center gap-2 transition-all shadow-md active:scale-95 shrink-0 cursor-pointer"
+                          >
+                            <FileDown className="w-4 h-4" />
+                            <span>Baixar PDF</span>
+                          </button>
+                        </div>
+                      );
+                    })()}
                   </div>
                 </div>
               );
